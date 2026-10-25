@@ -203,9 +203,9 @@ function render() {
   const counted = c.ok && c.todayCad != null;
   $('costText').textContent = !c.ok ? 'Unavailable' : counted ? money(c.todayCad) : 'Not counted yet';
   const notes = [];
-  if (counted) notes.push(c.partial ? 'So far, partial · API prices' : 'At API prices');
-  else if (c.ok) notes.push('The usage ledger hasn’t run today');
-  if (c.ok && c.monthCad != null) notes.push(`month ${money(c.monthCad).replace('.00', '')}`);
+  if (counted) notes.push(c.partial ? 'Partial · API prices' : 'API prices');
+  else if (c.ok) notes.push('Ledger not run today');
+  if (c.ok && c.monthCad != null) notes.push(`month CA$${Math.round(c.monthCad).toLocaleString('en-CA')}`);
   $('costNote').textContent = notes.join(' · ');
 }
 
