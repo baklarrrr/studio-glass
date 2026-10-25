@@ -10,7 +10,7 @@
   --mint-soft: rgba(139, 219, 182, 0.16);
   --warn: #f4ce90;
   --bad: #f0a5a5;
-  --glow: 0 0 0 3px var(--mint), 0 0 16px rgba(139, 219, 182, 0.5);
+  --glow: 0 0 0 2px var(--mint), 0 0 8px rgba(139, 219, 182, 0.35);
 }
 
 * { box-sizing: border-box; }
@@ -30,10 +30,23 @@ svg { fill: currentColor; }
 .screen.center { justify-content: center; gap: 10px; }
 
 .topline { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex: none; font-size: 15px; color: var(--dim); }
-.brand { font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; font-size: 13px; color: var(--soft); }
-.state { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
-.dot { inline-size: 8px; block-size: 8px; border-radius: 50%; background: var(--dim); }
+.brand { font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; font-size: 13px; color: var(--soft); white-space: nowrap; }
+.right { display: inline-flex; align-items: center; gap: 14px; min-inline-size: 0; }
+.state { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; min-inline-size: 0; }
+#stateText { overflow: hidden; text-overflow: ellipsis; }
+/* A link warning is the one thing on this line that must read outdoors: bright, not dim grey. */
+.state.warn { color: var(--warn); font-weight: 600; }
+.dot { flex: none; inline-size: 8px; block-size: 8px; border-radius: 50%; background: var(--dim); }
 .dot.live { background: var(--mint); box-shadow: 0 0 8px var(--mint); }
+.state.warn .dot { background: var(--warn); }
+
+/* The glasses' battery, as in Tidal Glass: a bolt while charging, warm at 15% or less. */
+.gbat { display: inline-flex; align-items: center; gap: 4px; flex: none; font-variant-numeric: tabular-nums; }
+.gbat svg { inline-size: 18px; block-size: 18px; }
+.gbat.low { color: var(--warn); font-weight: 600; }
+.gbat.charging { color: var(--mint); }
+.gbat .gbat-bolt { display: none; }
+.gbat.charging .gbat-bolt { display: inline; }
 
 .head, .block { border: 1.5px solid var(--hair); border-radius: 18px; outline: none; }
 .head { padding: 12px 18px 14px; flex: none; }
@@ -57,8 +70,10 @@ svg { fill: currentColor; }
 .items .ti { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .items .st { font-size: 15px; color: var(--dim); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .items .why { grid-column: 2 / 4; font-size: 15px; color: var(--warn); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: -4px; }
+.items li.more .ti { color: var(--dim); font-size: 16px; }
 
-.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; flex: none; }
+.pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; flex: none; }
+.pair .value, .pair .note { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .block.line { display: flex; align-items: baseline; gap: 14px; flex: none; padding: 8px 16px 9px; min-block-size: 44px; }
 .block.line .label { margin-bottom: 0; }
 .line-text { display: flex; align-items: baseline; gap: 12px; min-inline-size: 0; }
@@ -67,11 +82,28 @@ svg { fill: currentColor; }
 .value.quiet { color: var(--soft); font-weight: 600; font-size: 18px; }
 .line-text .value { white-space: nowrap; flex: none; }
 
-.head:focus, .block:focus { border-color: var(--mint); background: var(--mint-soft); box-shadow: var(--glow); }
+/* Focus is a ring, never a fill: the page is read-only, and a lit card would only spend light. */
+.head:focus, .block:focus { border-color: var(--mint); box-shadow: var(--glow); }
 
 h1 { font-size: 32px; }
 .hero { inline-size: 72px; block-size: 72px; color: var(--mint); }
 
+/* The PC isn't answering, or the link is down: everything below the top line is its last update. */
+body.stale .head, body.stale .block { opacity: 0.55; }
+
+/* ---- calm: less light while nobody is touching it ------------------------------------------
+   After 15 s without a swipe or pinch, borders, labels and secondary text dim. A link warning keeps
+   everything bright; a render problem's headline and reasons, and a low battery, stay bright. */
+body.calm .head, body.calm .block { border-color: rgba(255, 255, 255, 0.14); }
+body.calm .head:focus, body.calm .block:focus { border-color: rgba(139, 219, 182, 0.5); box-shadow: none; }
+body.calm .brand, body.calm .state, body.calm .label, body.calm .note, body.calm .subline,
+body.calm .items .st, body.calm .items .mark, body.calm .gbat:not(.low) { opacity: 0.55; }
+body.calm .headline:not(.attention), body.calm .value, body.calm .items .ti { opacity: 0.7; }
+
 @media (prefers-reduced-motion: no-preference) {
-  .head, .block { transition: box-shadow 140ms ease, background-color 140ms ease, border-color 140ms ease; }
+  .head, .block { transition: box-shadow 140ms ease, border-color 140ms ease; }
+  /* Easing into calm is slow so it never draws the eye; waking is instant (no transition back). */
+  body.calm .brand, body.calm .state, body.calm .label, body.calm .note, body.calm .subline,
+  body.calm .items .st, body.calm .items .mark, body.calm .gbat, body.calm .headline, body.calm .value,
+  body.calm .items .ti { transition: opacity 900ms ease; }
 }

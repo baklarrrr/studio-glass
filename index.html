@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="application-name" content="Bakar Studio">
-  <meta name="description" content="Bakar Studio at a glance on Meta Ray-Ban Display: renders, AI work, today's AI cost and these glasses' battery, sent privately from the studio PC.">
+  <meta name="description" content="Bakar Studio at a glance on Meta Ray-Ban Display: renders, AI work, today's AI use at API prices and these glasses' battery and tracking, sent privately from the studio PC.">
   <meta name="mrbd-web-app-capable" content="yes">
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#000000">
@@ -17,27 +17,32 @@
     <section id="glance" class="screen" aria-labelledby="title">
       <header class="topline">
         <span class="brand" id="title">Bakar Studio</span>
-        <span class="state"><span id="dot" class="dot" aria-hidden="true"></span><span id="stateText">Asking your PC…</span></span>
+        <span class="right">
+          <span id="state" class="state" hidden><span id="dot" class="dot" aria-hidden="true"></span><span id="stateText">Asking your PC…</span></span>
+          <span id="gbat" class="gbat" hidden aria-label="Glasses battery">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="7" width="17" height="10" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="20.2" y="10" width="1.8" height="4" rx=".6"/><rect class="gbat-fill" x="4.3" y="8.8" width="13.4" height="6.4" rx="1"/><path class="gbat-bolt" d="M12.6 7.4 8.4 12.6h2.9l-1 4 4.3-5.4h-2.9z" fill="#000" stroke="#000" stroke-width="1.6" stroke-linejoin="round"/><path class="gbat-bolt" d="M12.6 7.4 8.4 12.6h2.9l-1 4 4.3-5.4h-2.9z"/></svg><span class="gbat-text"></span>
+          </span>
+        </span>
       </header>
 
       <div id="headCard" class="head" tabindex="0">
-        <p id="headline" class="headline">Bakar Studio</p>
+        <p id="headline" class="headline quiet">Asking your PC…</p>
         <p id="subline" class="subline"></p>
       </div>
 
-      <div class="block renders" tabindex="0" aria-labelledby="rendersLabel">
+      <div id="rendersBlock" class="block renders" tabindex="0" aria-labelledby="rendersLabel" hidden>
         <p id="rendersLabel" class="label">Renders</p>
         <ol id="renderList" class="items"></ol>
       </div>
 
-      <div class="pair">
+      <div id="pairRow" class="pair" hidden>
         <div class="block" tabindex="0" aria-labelledby="aiLabel">
           <p id="aiLabel" class="label">AI at work</p>
           <p id="aiText" class="value"></p>
           <p id="aiNote" class="note"></p>
         </div>
         <div class="block" tabindex="0" aria-labelledby="costLabel">
-          <p id="costLabel" class="label">AI cost today</p>
+          <p id="costLabel" class="label">AI use today</p>
           <p id="costText" class="value"></p>
           <p id="costNote" class="note"></p>
         </div>
