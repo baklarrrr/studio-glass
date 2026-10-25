@@ -11,6 +11,10 @@
 // and stops when the page says bye or goes quiet.
 
 const BROKERS = ['wss://broker.emqx.io:8084/mqtt', 'wss://broker.hivemq.com:8884/mqtt'];
+// shiftr.io's public instance on port 443, for networks that let only web traffic through; joined only
+// when neither broker above connects within 5 s.
+const SPARE = { url: 'wss://public.cloud.shiftr.io', username: 'public', password: 'public' };
+let spareTimer = 0;
 const $ = (id) => document.getElementById(id);
 
 let topic = null;
@@ -87,29 +91,45 @@ function loadMqtt() {
   document.head.appendChild(s);
 }
 
+let linkId = '';
+
 function openLink() {
   if (links.length) return;
   if (typeof mqtt === 'undefined') { loadMqtt(); return; }
-  const id = Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => b.toString(16).padStart(2, '0')).join('');
-  for (const url of BROKERS) {
-    const client = mqtt.connect(url, {
-      clientId: `sgg-${id}-${links.length}`, clean: true, keepalive: 45, protocolVersion: 4,
-      reconnectPeriod: 1500, connectTimeout: 8000,
-    });
-    client.on('connect', () => {
-      client.subscribe(`bkr/${topic}/s`, { qos: 1 });
-      flushOutbox();
-    });
-    client.on('message', (t, payload) => handle(new TextDecoder().decode(payload)));
-    client.on('error', () => { /* mqtt.js reconnects by itself */ });
-    links.push(client);
-  }
+  linkId = Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => b.toString(16).padStart(2, '0')).join('');
+  for (const url of BROKERS) addBroker(url);
+  spareTimer = setTimeout(openSpare, 5000);
+}
+
+function addBroker(url, extra = {}) {
+  const client = mqtt.connect(url, {
+    clientId: `sgg-${linkId}-${links.length}`, clean: true, keepalive: 45, protocolVersion: 4,
+    reconnectPeriod: 1500, connectTimeout: 8000, ...extra,
+  });
+  client.on('connect', () => {
+    client.subscribe(`bkr/${topic}/s`, { qos: 1 });
+    flushOutbox();
+  });
+  client.on('message', (t, payload) => handle(new TextDecoder().decode(payload)));
+  client.on('error', () => { /* mqtt.js reconnects by itself */ });
+  links.push(client);
+  return client;
+}
+
+// Neither main broker connected within 5 s (a network that lets only web traffic through): the
+// spare on port 443 joins in.
+function openSpare() {
+  spareTimer = 0;
+  if (!links.length || links.some((l) => l.connected || l.spare)) return;
+  addBroker(SPARE.url, { username: SPARE.username, password: SPARE.password }).spare = true;
 }
 
 // Graceful close, so a last 'bye' still goes out.
 function closeLink() {
   const old = links;
   links = [];
+  clearTimeout(spareTimer);
+  spareTimer = 0;
   for (const l of old) { try { l.end(false); } catch (e) { /* already closed */ } }
 }
 
