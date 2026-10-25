@@ -12,12 +12,18 @@
 // says bye or goes quiet. "Live" means the PC answered this visit's latest hello; a retained copy
 // carries an older stamp (or none), so an old summary never reads as live.
 
-const BROKERS = ['wss://broker.emqx.io:8084/mqtt', 'wss://broker.hivemq.com:8884/mqtt'];
-// shiftr.io's public instance on port 443, for networks that let only web traffic through; joined only
-// when neither broker above connects within 5 s.
-const SPARE = { url: 'wss://public.cloud.shiftr.io', username: 'public', password: 'public' };
-const SPARE_AFTER = 5000;
+// Three public brokers, all opened together: EMQX, HiveMQ and shiftr.io's on port 443 (the relay is on
+// all three). shiftr.io used to wait 5 s as a spare, but on 2026-10-25 EMQX and HiveMQ could not be
+// reached from home at all, so every opening waited on it.
+const BROKERS = [
+  { url: 'wss://broker.emqx.io:8084/mqtt' },
+  { url: 'wss://broker.hivemq.com:8884/mqtt' },
+  { url: 'wss://public.cloud.shiftr.io', username: 'public', password: 'public' },
+];
 const OUTBOX_MAX_AGE = 60000;
+// A broker that connects late (or again) is also handed what went out in the last few seconds, so a
+// hello that went only to a broker without the relay still arrives.
+const RESEND_WINDOW = 10000;
 const ANSWER_WAIT = 10000;   // a hello the PC hasn't answered in this long: "PC not answering"
 const CALM_AFTER = 15000;    // untouched this long: less light
 const LOW_BATTERY = 15;      // the same threshold as Tidal Glass
@@ -28,9 +34,9 @@ let key = null;
 let data = null;
 let links = [];
 let linkId = '';
-let spareTimer = 0;
 let linkDownSince = 0;    // when the page started waiting for a broker (0 while one is connected)
 let outbox = [];          // sealed messages waiting for a connection: { body, at }
+let sentLately = [];      // sealed messages already out: { body, at }
 const recent = [];        // the last messages handled (the same one arrives from every broker)
 let helloTimer = 0;
 let tickTimer = 0;
@@ -96,10 +102,7 @@ function linkUp() {
 
 function linkChanged() {
   if (linkUp()) linkDownSince = 0;
-  else {
-    if (!linkDownSince) linkDownSince = Date.now();
-    if (links.length && !spareTimer && !links.some((l) => l.spare)) spareTimer = setTimeout(openSpare, SPARE_AFTER);
-  }
+  else if (!linkDownSince) linkDownSince = Date.now();
   renderState();
 }
 
@@ -129,11 +132,10 @@ function openLink() {
   }
   linkDownSince = Date.now();
   linkId = Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => b.toString(16).padStart(2, '0')).join('');
-  for (const url of BROKERS) addBroker(url);
-  spareTimer = setTimeout(openSpare, SPARE_AFTER);
+  for (const b of BROKERS) addBroker(b);
 }
 
-function addBroker(url, extra = {}) {
+function addBroker({ url, ...extra }) {
   const client = mqtt.connect(url, {
     clientId: `sgg-${linkId}-${links.length}`, clean: true, keepalive: 45, protocolVersion: 4,
     reconnectPeriod: 1500, connectTimeout: 8000, ...extra,
@@ -141,6 +143,9 @@ function addBroker(url, extra = {}) {
   client.on('connect', () => {
     client.subscribe(`bkr/${topic}/s`, { qos: 1 });
     linkChanged();
+    const now = Date.now();
+    sentLately = sentLately.filter((o) => now - o.at < RESEND_WINDOW);
+    for (const o of sentLately) client.publish(`bkr/${topic}/c`, o.body, { qos: 1 });
     flushOutbox();
     // Back after a drop: a hello lost on the way (or too old to send) is asked again.
     if (helloAt && answeredRe < helloAt && Date.now() - helloAt > 3000) hello();
@@ -153,31 +158,26 @@ function addBroker(url, extra = {}) {
   return client;
 }
 
-// Neither main broker connected within 5 s (a network that lets only web traffic through): the
-// spare on port 443 joins in.
-function openSpare() {
-  spareTimer = 0;
-  if (!links.length || linkUp() || links.some((l) => l.spare)) return;
-  addBroker(SPARE.url, { username: SPARE.username, password: SPARE.password }).spare = true;
-}
-
 // Graceful close, so a last 'bye' still goes out.
 function closeLink() {
   const old = links;
   links = [];
   outbox = [];
+  sentLately = [];
   linkDownSince = 0;
-  clearTimeout(spareTimer);
-  spareTimer = 0;
   for (const l of old) { try { l.end(false); } catch (e) { /* already closed */ } }
 }
 
 function flushOutbox() {
   const live = links.filter((l) => l.connected);
   if (!live.length) return;
-  const due = outbox.filter((o) => Date.now() - o.at < OUTBOX_MAX_AGE);
+  const now = Date.now();
+  const due = outbox.filter((o) => now - o.at < OUTBOX_MAX_AGE);
   outbox = [];
-  for (const o of due) for (const l of live) l.publish(`bkr/${topic}/c`, o.body, { qos: 1 });
+  for (const o of due) {
+    for (const l of live) l.publish(`bkr/${topic}/c`, o.body, { qos: 1 });
+    sentLately.push({ body: o.body, at: now });
+  }
 }
 
 async function send(c, ts = Date.now()) {
@@ -185,6 +185,8 @@ async function send(c, ts = Date.now()) {
   const live = links.filter((l) => l.connected);
   if (!live.length) { outbox.push({ body, at: ts }); return; }
   for (const l of live) l.publish(`bkr/${topic}/c`, body, { qos: 1 });
+  sentLately.push({ body, at: Date.now() });
+  if (sentLately.length > 20) sentLately.shift();
 }
 
 async function handle(text) {
