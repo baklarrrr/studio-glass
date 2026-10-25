@@ -72,8 +72,22 @@ async function seal(obj) {
 
 // ---- link --------------------------------------------------------------------------------
 
+// The link library is a large file. On the first launch after an update the previous offline copy
+// of this app can give up on it before it arrives, so it is fetched again for about half a minute.
+let mqttTries = 0;
+function loadMqtt() {
+  if (typeof mqtt !== 'undefined' || mqttTries >= 10) return;
+  mqttTries++;
+  const s = document.createElement('script');
+  s.src = 'vendor/mqtt.min.js';
+  s.onload = () => { if (document.visibilityState === 'visible') { openLink(); flushOutbox(); } };
+  s.onerror = () => setTimeout(loadMqtt, 3000);
+  document.head.appendChild(s);
+}
+
 function openLink() {
-  if (links.length || typeof mqtt === 'undefined') return;
+  if (links.length) return;
+  if (typeof mqtt === 'undefined') { loadMqtt(); return; }
   const id = Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => b.toString(16).padStart(2, '0')).join('');
   for (const url of BROKERS) {
     const client = mqtt.connect(url, {
