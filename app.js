@@ -1,14 +1,16 @@
 'use strict';
 
 // Bakar Studio at a glance on Meta Ray-Ban Display.
-// The studio PC's relay sends a small summary (renders, AI at work, today's AI cost) through a private
-// ntfy.sh topic; it is AES-GCM encrypted with the key in this page's URL fragment, which browsers
-// never send to a server. Read-only: nothing here can change anything on the PC.
+// The studio PC's relay sends a small summary (renders, AI at work, today's AI cost) through two free
+// public MQTT brokers on a private random topic (no daily cap; either broker can be down). It is
+// AES-GCM encrypted with the key in this page's URL fragment, which browsers never send to a server.
+// Read-only: nothing here can change anything on the PC.
 //
-// The page says hello when it opens and every two minutes while it is on screen; the relay answers
-// at once and then sends changes, and stops when the page says bye or goes quiet.
+// The latest summary is retained on the brokers, so it shows the moment the page connects. The page
+// says hello when it opens and every two minutes while it is on screen; the relay then sends changes,
+// and stops when the page says bye or goes quiet.
 
-const SERVER = 'https://ntfy.sh';
+const BROKERS = ['wss://broker.emqx.io:8084/mqtt', 'wss://broker.hivemq.com:8884/mqtt'];
 const $ = (id) => document.getElementById(id);
 
 let topic = null;
@@ -16,7 +18,9 @@ let key = null;
 let data = null;
 let heardAt = 0;
 let askedAt = 0;
-let stream = null;
+let links = [];
+let outbox = [];
+const recent = [];
 let helloTimer = 0;
 let tickTimer = 0;
 
@@ -66,15 +70,52 @@ async function seal(obj) {
   return toB64url(out);
 }
 
-async function send(c) {
-  try {
-    await fetch(`${SERVER}/${topic}-c`, { method: 'POST', body: await seal({ c, ts: Date.now() }) });
-  } catch (e) { /* the state line says when the PC goes quiet */ }
-}
-
 // ---- link --------------------------------------------------------------------------------
 
+function openLink() {
+  if (links.length || typeof mqtt === 'undefined') return;
+  const id = Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => b.toString(16).padStart(2, '0')).join('');
+  for (const url of BROKERS) {
+    const client = mqtt.connect(url, {
+      clientId: `sgg-${id}-${links.length}`, clean: true, keepalive: 45, protocolVersion: 4,
+      reconnectPeriod: 1500, connectTimeout: 8000,
+    });
+    client.on('connect', () => {
+      client.subscribe(`bkr/${topic}/s`, { qos: 1 });
+      flushOutbox();
+    });
+    client.on('message', (t, payload) => handle(new TextDecoder().decode(payload)));
+    client.on('error', () => { /* mqtt.js reconnects by itself */ });
+    links.push(client);
+  }
+}
+
+// Graceful close, so a last 'bye' still goes out.
+function closeLink() {
+  const old = links;
+  links = [];
+  for (const l of old) { try { l.end(false); } catch (e) { /* already closed */ } }
+}
+
+function flushOutbox() {
+  const live = links.filter((l) => l.connected);
+  if (!live.length) return;
+  const due = outbox.filter((o) => Date.now() - o.at < 60000);
+  outbox = [];
+  for (const o of due) for (const l of live) l.publish(`bkr/${topic}/c`, o.body, { qos: 1 });
+}
+
+async function send(c) {
+  const body = await seal({ c, ts: Date.now() });
+  const live = links.filter((l) => l.connected);
+  if (!live.length) { outbox.push({ body, at: Date.now() }); return; }
+  for (const l of live) l.publish(`bkr/${topic}/c`, body, { qos: 1 });
+}
+
 async function handle(text) {
+  if (recent.includes(text)) return; // the same message from the other broker
+  recent.push(text);
+  if (recent.length > 8) recent.shift();
   let m;
   try { m = await openMessage(text); } catch (e) { return; }
   if (m.t !== 'studio') return;
@@ -88,44 +129,17 @@ function hello() {
   send('hello');
 }
 
-async function catchUp() {
-  try {
-    const r = await fetch(`${SERVER}/${topic}-s/json?poll=1&since=latest`);
-    for (const line of (await r.text()).split('\n')) {
-      if (!line.trim()) continue;
-      const ev = JSON.parse(line);
-      if (ev.event === 'message') await handle(ev.message);
-    }
-  } catch (e) { /* the live stream still connects */ }
-}
-
-function openStream() {
-  if (stream) return;
-  stream = new EventSource(`${SERVER}/${topic}-s/sse`);
-  stream.addEventListener('message', (e) => {
-    try {
-      const ev = JSON.parse(e.data);
-      if (ev.event === 'message' && ev.message) handle(ev.message);
-    } catch (err) { /* keepalive */ }
-  });
-}
-
-function closeStream() {
-  if (stream) { stream.close(); stream = null; }
-}
-
 // On screen: live link, a hello every two minutes and a clock for the state line. Hidden: nothing.
 function onVisibility() {
   clearInterval(helloTimer);
   clearInterval(tickTimer);
   if (document.visibilityState === 'visible') {
-    catchUp().then(openStream);
+    openLink();
     hello();
     helloTimer = setInterval(hello, 120000);
     tickTimer = setInterval(renderState, 5000);
   } else {
-    send('bye');
-    closeStream();
+    send('bye').then(closeLink);
   }
 }
 

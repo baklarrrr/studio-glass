@@ -1,10 +1,10 @@
 'use strict';
 
 // Keeps the app shell on the glasses so it opens quickly on a slow link. Network first, so an update
-// shows on the next launch. Only this site's own files are handled; the studio link (ntfy.sh) always
-// goes to the network.
-const CACHE = 'studio-glass-v2';
-const SHELL = ['./', 'index.html', 'style.css', 'app.js', 'icon.svg', 'icon-mono.svg'];
+// shows on the next launch. Only this site's own files are handled; the studio link (MQTT over
+// WebSocket) always goes to the network.
+const CACHE = 'studio-glass-v3';
+const SHELL = ['./', 'index.html', 'style.css', 'app.js', 'vendor/mqtt.min.js', 'icon.svg', 'icon-mono.svg'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting()));
