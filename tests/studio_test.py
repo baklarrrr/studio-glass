@@ -158,10 +158,19 @@ with sync_playwright() as p:
     g0 = {"ok": True, "st": "connected", "fresh": False, "bat": None, "chg": None, "worn": None, "seen": None,
           "rep": None, "place": False}
     feed(summary(now(), re=page.evaluate("helloAt"), glasses=g0))
-    check("no report time: 'no report yet'", text("#glassesNote") == "no report yet · open Tidal Glass on your phone",
+    check("no report time: no made-up time, and what to do", text("#glassesNote") == "open Tidal Glass on your phone",
           text("#glassesNote"))
     check("no hours count anywhere", " h ago" not in page.evaluate("document.body.innerText"))
     shot("A06_glasses_no_report")
+    feed(summary(now(), re=page.evaluate("helloAt"), glasses={**g0, "rep": now() - 3 * 3600_000}))
+    fits = "(id => { const n = document.getElementById(id); return n.scrollWidth <= n.clientWidth; })"
+    check("not reporting: when, and what to do, on one line (Photographer recheck G15)",
+          text("#glassesNote") == "3 h ago · open Tidal Glass on your phone" and page.evaluate(fits + "('glassesNote')"),
+          text("#glassesNote"))
+    feed(summary(now(), re=page.evaluate("helloAt"), cost={"ok": True, "todayCad": None, "monthCad": 5432.1, "partial": False}))
+    check("ledger not run today: 'Not counted yet' and the month on one line (Photographer recheck G30)",
+          text("#costText") == "Not counted yet" and text("#costNote") == "month CA$5.4k" and page.evaluate(fits + "('costNote')"),
+          text("#costNote"))
     feed(summary(now(), re=page.evaluate("helloAt"), glasses={**g0, "st": "unpaired"}))
     check("unpaired: shown, says what it waits for", not hidden("#glassesBlock") and text("#glassesText") == "Not tracked yet"
           and text("#glassesNote") == "waiting for the phone app update", text("#glassesNote"))

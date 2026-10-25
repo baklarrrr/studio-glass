@@ -421,9 +421,9 @@ function render() {
   const c = data.cost || {};
   const counted = c.ok && c.todayCad != null;
   $('costText').textContent = !c.ok ? 'Unavailable' : counted ? money(c.todayCad) : 'Not counted yet';
+  // One short line (the value above already says "Not counted yet" when the ledger hasn't run today).
   const notes = [];
   if (counted) notes.push(c.partial ? 'API prices · partial' : 'API prices');
-  else if (c.ok) notes.push('ledger not run today');
   if (c.ok && c.monthCad != null) notes.push(`month ${shortMoney(c.monthCad)}`);
   $('costNote').textContent = notes.join(' · ');
 
@@ -449,8 +449,10 @@ function render() {
     if (Number.isFinite(g.bat)) note.push(`${g.bat}%${g.chg ? ' charging' : ''}`);
     note.push(g.rep ? `phone reported ${ago(g.rep)}` : 'no report yet');
   } else {
+    // "Not reporting 3 h ago · open Tidal Glass on your phone": short enough for one line.
     value = 'Not reporting';
-    note.push(g.rep ? `last report ${ago(g.rep)}` : 'no report yet', 'open Tidal Glass on your phone');
+    if (g.rep) note.push(ago(g.rep));
+    note.push('open Tidal Glass on your phone');
   }
   $('glassesText').textContent = value;
   $('glassesText').classList.toggle('quiet', state === 'quiet');
