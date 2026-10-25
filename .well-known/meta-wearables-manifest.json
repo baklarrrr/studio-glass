@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "name": "Bakar Studio",
+  "description": "Renders, AI work and today's AI cost at a glance, sent privately from the studio PC.",
+  "appearance": {
+    "theme_color": "#8BDBB6",
+    "icon_background": {
+      "colors": ["#1F4A3A", "#0B1512"],
+      "stops": [0.0, 1.0],
+      "inner_glow_color": "#C5F2DD"
+    },
+    "icon": {
+      "src": "../icon-mono.svg",
+      "type": "monochrome"
+    }
+  }
+}
