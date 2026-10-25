@@ -237,6 +237,30 @@ function render() {
   else if (c.ok) notes.push('Ledger not run today');
   if (c.ok && c.monthCad != null) notes.push(`month CA$${Math.round(c.monthCad).toLocaleString('en-CA')}`);
   $('costNote').textContent = notes.join(' · ');
+
+  // These glasses as the phone last reported them. The last place itself stays on the PC.
+  const g = data.glasses || {};
+  $('glassesBlock').hidden = !g.ok;
+  if (g.ok) {
+    // A battery reading is shown only while it is live (connected, recent report). Otherwise the phone's
+    // tracker has not caught up with these glasses, which are plainly working while this is on screen.
+    const live = g.fresh && g.st !== 'disconnected';
+    const value = $('glassesText');
+    value.textContent = live ? (g.bat != null ? `${g.bat}%` : 'Connected') : 'Not reporting';
+    value.classList.toggle('low', live && g.bat != null && g.bat <= 20 && !g.chg);
+    value.classList.toggle('quiet', !live);
+    const parts = [];
+    if (live) {
+      if (g.chg) parts.push('charging');
+      parts.push(`phone reported ${ago(g.rep)}`);
+    } else if (g.st === 'disconnected') {
+      parts.push(`disconnected ${ago(g.rep)}`);
+      if (g.place) parts.push('place in Studio');
+    } else {
+      parts.push(`last heard ${ago(g.rep)}`, 'check Tidal Glass');
+    }
+    $('glassesNote').textContent = parts.join(' · ');
+  }
 }
 
 // ---- start -------------------------------------------------------------------------------

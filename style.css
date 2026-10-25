@@ -59,6 +59,13 @@ svg { fill: currentColor; }
 .items .why { grid-column: 2 / 4; font-size: 15px; color: var(--warn); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: -4px; }
 
 .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; flex: none; }
+.block.line { display: flex; align-items: baseline; gap: 14px; flex: none; padding: 8px 16px 9px; min-block-size: 44px; }
+.block.line .label { margin-bottom: 0; }
+.line-text { display: flex; align-items: baseline; gap: 12px; min-inline-size: 0; }
+.line-text .note { margin-top: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.value.low { color: var(--warn); }
+.value.quiet { color: var(--soft); font-weight: 600; font-size: 18px; }
+.line-text .value { white-space: nowrap; flex: none; }
 
 .head:focus, .block:focus { border-color: var(--mint); background: var(--mint-soft); box-shadow: var(--glow); }
 
