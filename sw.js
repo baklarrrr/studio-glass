@@ -3,7 +3,7 @@
 // Keeps the app shell on the glasses so it opens quickly on a slow link. Network first, so an update
 // shows on the next launch. Only this site's own files are handled; the studio link (ntfy.sh) always
 // goes to the network.
-const CACHE = 'studio-glass-v1';
+const CACHE = 'studio-glass-v2';
 const SHELL = ['./', 'index.html', 'style.css', 'app.js', 'icon.svg', 'icon-mono.svg'];
 
 self.addEventListener('install', (event) => {

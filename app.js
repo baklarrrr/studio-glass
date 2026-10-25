@@ -198,9 +198,15 @@ function render() {
   $('aiText').textContent = names.length ? names.map((n) => `${n} ${ai[n]}`).join(' · ') : (data.aiNote ? 'Not tracked' : 'None running');
   $('aiNote').textContent = data.aiNote ? 'Speed Light is paused' : '';
 
+  // An amount the ledger has not counted yet is shown as such, never as CA$0.00.
   const c = data.cost || {};
-  $('costText').textContent = c.ok ? money(c.todayCad) : 'Unavailable';
-  $('costNote').textContent = c.ok ? `At API prices · month ${money(c.monthCad).replace('.00', '')}` : '';
+  const counted = c.ok && c.todayCad != null;
+  $('costText').textContent = !c.ok ? 'Unavailable' : counted ? money(c.todayCad) : 'Not counted yet';
+  const notes = [];
+  if (counted) notes.push(c.partial ? 'So far, partial · API prices' : 'At API prices');
+  else if (c.ok) notes.push('The usage ledger hasn’t run today');
+  if (c.ok && c.monthCad != null) notes.push(`month ${money(c.monthCad).replace('.00', '')}`);
+  $('costNote').textContent = notes.join(' · ');
 }
 
 // ---- start -------------------------------------------------------------------------------
