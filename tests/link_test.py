@@ -29,6 +29,7 @@ window.mqtt = { connect(url, opts) {
     on(ev, fn) { (h[ev] = h[ev] || []).push(fn); return c; },
     once(ev, fn) { const w = (...a) => { h[ev] = (h[ev] || []).filter((f) => f !== w); fn(...a); }; return c.on(ev, w); },
     subscribe() {}, publish(t, body) { c.sent.push(body); }, end() { c.connected = false; },
+    reconnect() { c.tries = (c.tries || 0) + 1; },
     fire(ev, ...a) {
       if (ev === 'connect') c.connected = true;
       if (ev === 'close' || ev === 'offline') c.connected = false;
@@ -107,6 +108,17 @@ with sync_playwright() as p:
         got = page.evaluate("(i) => window.__clients[i].sent", fresh)
         check(NAME3, len(h) == 3 and not set(got) & set(old), json.dumps([h, len(got)]))
     guard(NAME3, t3)
+
+    NAME4 = "retries back off without signal (1 s x3, then up to 30 s; 10 min while another broker works)"
+    def t4():
+        d = page.evaluate("[1, 2, 3, 4, 5, 6, 8, 12].map((n) => retryDelay(n, false)).concat([retryDelay(2, true), retryDelay(12, true)])")
+        rp = page.evaluate("window.__clients.every((c) => c.opts.reconnectPeriod === 0)")
+        n0 = page.evaluate("window.__clients.length")
+        page.evaluate("(i) => window.__clients[i].fire('close')", n0 - 1)
+        page.wait_for_timeout(1300)
+        tried = page.evaluate("(i) => window.__clients[i].tries || 0", n0 - 1)
+        check(NAME4, d == [1000, 1000, 1000, 2000, 4000, 8000, 30000, 30000, 4000, 600000] and rp and tried == 1, json.dumps([d, rp, tried]))
+    guard(NAME4, t4)
 
     check("no page errors", not errors, "; ".join(errors))
     browser.close()

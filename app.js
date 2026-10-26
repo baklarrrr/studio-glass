@@ -135,12 +135,35 @@ function openLink() {
   for (const b of BROKERS) addBroker(b);
 }
 
+// Retries are scheduled here, not by mqtt.js (reconnectPeriod 0), as in Tidal Glass build 17: on 2026-10-25 an open
+// page without signal tried every broker about every 2 s for 8.5 minutes, keeping the glasses' radio awake. Now 1 s
+// for three tries, then doubling to 30 s while nothing is connected, and 10 min for a broker that keeps failing
+// while another carries the link. A connect, a network change or a new visit (fresh links) starts it fast again.
+function retryDelay(fails, othersUp) {
+  if (othersUp) return Math.min(600000, 1000 * 2 ** Math.min(fails, 10));
+  return fails <= 3 ? 1000 : Math.min(30000, 1000 * 2 ** (fails - 3));
+}
+
+function scheduleRetry(client) {
+  if (client.retryTimer || !links.includes(client) || client.connected) return;
+  client.fails = (client.fails || 0) + 1;
+  client.retryTimer = setTimeout(() => {
+    client.retryTimer = 0;
+    if (!links.includes(client) || client.connected) return;
+    try { client.reconnect(); } catch (e) { scheduleRetry(client); }
+  }, retryDelay(client.fails, linkUp()));
+}
+
+let clientSeq = 0;
 function addBroker({ url, ...extra }) {
   const client = mqtt.connect(url, {
-    clientId: `sgg-${linkId}-${links.length}`, clean: true, keepalive: 45, protocolVersion: 4,
-    reconnectPeriod: 1500, connectTimeout: 8000, ...extra,
+    clientId: `sgg-${linkId}-${clientSeq++}`, clean: true, keepalive: 45, protocolVersion: 4,
+    reconnectPeriod: 0, connectTimeout: 6000, ...extra,
   });
   client.on('connect', () => {
+    client.fails = 0;
+    clearTimeout(client.retryTimer);
+    client.retryTimer = 0;
     client.subscribe(`bkr/${topic}/s`, { qos: 1 });
     linkChanged();
     const now = Date.now();
@@ -152,8 +175,8 @@ function addBroker({ url, ...extra }) {
   });
   client.on('message', (t, payload) => handle(new TextDecoder().decode(payload)));
   client.on('offline', linkChanged);
-  client.on('close', linkChanged);
-  client.on('error', () => { /* mqtt.js reconnects by itself */ });
+  client.on('close', () => { linkChanged(); scheduleRetry(client); });
+  client.on('error', () => { /* the close that follows schedules the next try */ });
   links.push(client);
   return client;
 }
@@ -165,7 +188,7 @@ function closeLink() {
   outbox = [];
   sentLately = [];
   linkDownSince = 0;
-  for (const l of old) { try { l.end(false); } catch (e) { /* already closed */ } }
+  for (const l of old) { clearTimeout(l.retryTimer); try { l.end(false); } catch (e) { /* already closed */ } }
 }
 
 function flushOutbox() {
