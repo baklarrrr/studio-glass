@@ -34,6 +34,7 @@
         <p id="rendersLabel" class="label">Renders <span class="open-hint">Open jobs ›</span></p>
         <ol id="renderList" class="items"></ol>
       </div>
+      <button id="picturesButton" class="pictures-entry dashboard" type="button" hidden>Pictures <span>View renders and give feedback ›</span></button>
 
       <div id="pairRow" class="pair dashboard" hidden>
         <div class="block" aria-labelledby="aiLabel">
@@ -72,7 +73,30 @@
           <span id="pagePosition" aria-live="polite"></span>
           <button id="nextPage" type="button">Next</button>
         </nav>
-        <p class="job-disclosure">Pictures and feedback aren’t available here yet.</p>
+        <button id="jobPicturesButton" class="pictures-link" type="button">Browse render pictures</button>
+      </section>
+      <section id="reviewScreen" class="review-screen" aria-labelledby="reviewHeading" hidden>
+        <header class="review-heading"><h1 id="reviewHeading">Pictures</h1><div class="review-top-actions"><button id="reviewBack" type="button">Back</button><button id="reviewRefresh" type="button">Refresh</button></div></header>
+        <p id="reviewMessage" class="review-message" role="status" hidden></p>
+        <p id="reviewIdentity" class="review-identity" hidden></p>
+        <div id="reviewContent" class="review-content">
+          <ol id="pictureList" class="picture-list" hidden></ol>
+          <div id="pictureFrame" class="picture-frame" tabindex="0" aria-label="Render picture. When zoomed, arrow keys pan; Escape returns to fit." hidden><img id="renderPicture" alt=""></div>
+          <section id="feedbackForm" class="feedback-form" hidden>
+            <label for="feedbackText">What should change?</label><textarea id="feedbackText" maxlength="2000" placeholder="Select this field to write or dictate feedback." spellcheck="true"></textarea>
+            <p id="feedbackCount" class="review-small"></p>
+            <div class="provider-row" role="group" aria-label="Who should work on this?"><span>Send to</span><button type="button" data-provider="auto" aria-pressed="true">Auto</button><button type="button" data-provider="codex" aria-pressed="false">Codex</button><button type="button" data-provider="claude" aria-pressed="false">Claude</button></div>
+            <p class="review-small">Feedback creates a Studio task. Progress is shown here.</p>
+          </section>
+          <div id="reviewText" class="review-text" hidden></div>
+        </div>
+        <nav id="reviewPager" class="review-pager" aria-label="Picture or text pages"><button id="reviewPrevious" type="button">Previous</button><span id="reviewPosition" aria-live="polite"></span><button id="reviewNext" type="button">Next</button></nav>
+        <div id="reviewActions" class="review-actions">
+          <button id="zoomPicture" type="button" hidden>Zoom 2×</button><button id="giveFeedback" type="button" hidden>Give feedback</button>
+          <button id="reviewFeedback" type="button" hidden>Review feedback</button><button id="sendFeedback" type="button" hidden>Send feedback</button>
+          <button id="retryFeedback" type="button" hidden>Retry same feedback</button><button id="checkReceipt" type="button" hidden>Check progress</button>
+          <button id="usePictureVersion" type="button" hidden>Use this picture version</button><button id="openReviewResult" type="button" hidden>Open result picture</button>
+        </div>
       </section>
     </section>
 
@@ -84,6 +108,7 @@
     </section>
   </main>
   <script src="vendor/mqtt.min.js"></script>
+  <script src="review.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
