@@ -24,6 +24,7 @@ html, body {
 }
 main { block-size: 100%; }
 p, h1 { margin: 0; }
+button { font: inherit; color: inherit; background: transparent; cursor: pointer; }
 svg { fill: currentColor; }
 
 .screen { display: flex; flex-direction: column; gap: 12px; block-size: 100%; padding: 22px 30px 20px; overflow: hidden; }
@@ -59,6 +60,7 @@ svg { fill: currentColor; }
 .block { padding: 10px 16px 12px; min-block-size: 0; }
 .block.renders { flex: 1; overflow: hidden; }
 .label { font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--dim); margin-bottom: 4px; }
+.open-hint { float: right; font-size: 14px; letter-spacing: 0; text-transform: none; color: var(--soft); }
 .value { font-size: 22px; font-weight: 700; line-height: 1.2; }
 .note { font-size: 14px; color: var(--dim); margin-top: 2px; }
 
@@ -84,6 +86,42 @@ svg { fill: currentColor; }
 
 /* Focus is a ring, never a fill: the page is read-only, and a lit card would only spend light. */
 .head:focus, .block:focus { border-color: var(--mint); box-shadow: var(--glow); }
+.head[aria-disabled="false"], .renders[role="button"] { cursor: pointer; }
+
+/* Readable pages, with every control kept inside the glasses' 600 × 600 display. */
+.job-screen { display: flex; flex-direction: column; gap: 12px; flex: 1; min-block-size: 0; }
+.job-heading-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex: none; }
+.job-heading-row h1 { font-size: 26px; font-weight: 700; line-height: 1.15; }
+.job-heading-row .detail-heading { min-inline-size: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 22px; }
+.job-actions { display: flex; gap: 8px; flex: none; }
+.job-actions button, .job-pager button { border: 1.5px solid var(--hair); border-radius: 12px; min-block-size: 48px; padding: 8px 12px; font-size: 17px; }
+.job-screen button:focus { outline: none; border-color: var(--mint); box-shadow: var(--glow); }
+.job-screen button:disabled { opacity: 0.35; cursor: default; }
+.job-context { color: var(--soft); font-size: 15px; line-height: 1.35; flex: none; white-space: pre-line; }
+.job-context:empty { display: none; }
+.job-context.saved { color: var(--warn); }
+.job-body { flex: 1; min-block-size: 0; overflow: hidden; }
+.job-list { list-style: none; margin: 0; padding: 3px; display: flex; flex-direction: column; gap: 10px; }
+.job-button { display: block; inline-size: 100%; text-align: left; border: 1.5px solid var(--hair); border-radius: 16px; padding: 11px 14px; min-block-size: 74px; }
+.job-name { display: block; font-size: 21px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.job-meta { display: block; color: var(--mint); font-size: 16px; margin-top: 4px; }
+.job-button.attention .job-meta { color: var(--warn); }
+.job-button.queued .job-meta { color: var(--soft); }
+.job-empty { font-size: 22px; line-height: 1.4; padding: 12px 3px; }
+.detail-text { font-size: 22px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; padding: 3px; }
+.job-pager { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex: none; }
+#pagePosition { color: var(--soft); font-size: 16px; text-align: center; font-variant-numeric: tabular-nums; }
+.job-disclosure { font-size: 14px; line-height: 1.3; color: var(--dim); flex: none; }
+body.calm .job-screen button { border-color: rgba(255, 255, 255, 0.14); }
+body.calm .job-screen button:focus { border-color: rgba(139, 219, 182, 0.5); box-shadow: none; }
+body.calm .job-disclosure { opacity: 0.55; }
+@media (max-width: 480px) {
+  .screen { padding-inline: 18px; }
+  .job-heading-row { align-items: flex-start; }
+  .job-heading-row h1 { font-size: 24px; }
+  .job-actions { gap: 5px; }
+  .job-actions button { padding-inline: 9px; }
+}
 
 h1 { font-size: 32px; }
 .hero { inline-size: 72px; block-size: 72px; color: var(--mint); }
