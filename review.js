@@ -158,7 +158,9 @@ async function loadPicture(assetId, force = false) {
     review.pictures.set(assetId, { asset, url });
     setPicture(review.pictures.get(assetId));
     reconcileReceipts(result.reviews || [], review.draft);
-    review.message = review.draft.assetVersion !== asset.version ? 'The picture has changed. Your earlier draft keeps its original version.' : '';
+    review.message = review.draft.assetVersion !== asset.version ? review.draft.receipt
+      ? 'Saved feedback refers to an earlier version of this picture.'
+      : 'The picture has changed. Your earlier draft keeps its original version.' : '';
   } catch (error) {
     if (url) URL.revokeObjectURL(url);
     if (routeCurrent(key, epoch)) review.message = error.message;
@@ -184,6 +186,27 @@ function composeFeedback() {
   }
   navigateTo({ kind: 'feedback', assetId: review.asset.id, assetVersion: review.draft.assetVersion, phase: 'compose' });
 }
+function canStartFreshFeedback() {
+  return navigation.route.kind === 'picture' && !navigation.route.isResult && review.loaded && !review.busy
+    && review.draft && !review.draft.pending && review.draft.receipt && review.draft.receipt.assetId === review.asset.id
+    && ['ready', 'review-ready', 'completed', 'complete', 'done', 'failed', 'error', 'rejected', 'interrupted',
+      'needs-context', 'cancelled', 'canceled'].includes(receiptState(review.draft.receipt));
+}
+function startFreshFeedback() {
+  if (!canStartFreshFeedback()) return;
+  const previous = review.draft;
+  // Only this explicit action replaces the local draft. The saved receipt remains a separate
+  // Studio record; pending uncertainty and running work cannot enter this path.
+  review.receipts.set(previous.receipt.id, previous.receipt);
+  review.draft = review.drafts[review.asset.id] = {
+    assetId: review.asset.id, assetVersion: review.asset.version, title: review.asset.title, text: '',
+    provider: ['auto', 'codex', 'claude'].includes(previous.provider) ? previous.provider : 'auto',
+    pending: null, receipt: null
+  };
+  review.receipt = null;
+  saveReviewDrafts();
+  navigateTo({ kind: 'feedback', assetId: review.asset.id, assetVersion: review.asset.version, phase: 'compose' });
+}
 function feedbackPhase(phase) {
   if (navigation.route.kind !== 'feedback') return;
   navigation.route.phase = phase; storeRoute();
@@ -199,7 +222,7 @@ function updateFeedback() {
   saveReviewDrafts(); renderReviewControls();
 }
 function useCurrentPictureVersion() {
-  if (!review.loaded || !review.draft || review.draft.pending || review.busy) return;
+  if (!review.loaded || !review.draft || review.draft.pending || review.draft.receipt || review.busy) return;
   review.draft.assetVersion = review.asset.version; review.draft.receipt = null; review.receipt = null;
   navigation.route.assetVersion = review.asset.version; storeRoute();
   review.message = 'Your draft now refers to the picture shown. Review it before sending.';
@@ -368,12 +391,15 @@ function renderReviewControls() {
   const show = (id, yes) => { $(id).hidden = !yes; };
   show('zoomPicture', mode === 'picture' && review.loaded);
   show('giveFeedback', mode === 'picture' && review.loaded && !route.isResult);
+  show('newFeedback', canStartFreshFeedback());
   show('revisePicture', mode === 'picture' && review.loaded && !!route.isResult);
-  show('revisionHint', mode === 'picture' && review.loaded && !!route.isResult);
+  show('revisionHint', mode === 'picture' && review.loaded && (!!route.isResult || canStartFreshFeedback()));
+  $('revisionHint').textContent = route.isResult ? 'Starts a new revision. Earlier feedback stays in Feedback.'
+    : 'New feedback starts a separate request for this picture. Earlier feedback stays in Feedback.';
   show('reviewFeedback', mode === 'compose'); show('editFeedback', mode === 'confirm'); show('sendFeedback', mode === 'confirm');
   show('retryFeedback', mode === 'receipt' && !!draft?.pending && draft.pending.reviewId === route.reviewId);
   show('checkReceipt', mode === 'receipt');
-  show('usePictureVersion', ['picture', 'compose'].includes(mode) && review.loaded && draft?.assetVersion !== review.asset?.version && !draft?.pending);
+  show('usePictureVersion', ['picture', 'compose'].includes(mode) && review.loaded && draft?.assetVersion !== review.asset?.version && !draft?.pending && !draft?.receipt);
   show('openReviewResult', mode === 'receipt' && !!resultAssetId(review.receipt));
   show('reviewRefresh', ['gallery', 'inbox'].includes(mode) || (['picture', 'compose'].includes(mode) && (!review.loaded || !!review.message)));
   // Do not disable a focused status action during its request: browsers can discard focus.
@@ -431,6 +457,7 @@ function bindReview() {
   $('reviewRefresh').addEventListener('click', () => ['gallery', 'inbox'].includes(review.mode) ? loadCollection(true) : loadPicture(navigation.route.assetId, true));
   $('zoomPicture').addEventListener('click', inspectPicture);
   $('giveFeedback').addEventListener('click', composeFeedback);
+  $('newFeedback').addEventListener('click', startFreshFeedback);
   $('revisePicture').addEventListener('click', startRevision);
   $('feedbackText').addEventListener('input', updateFeedback); $('feedbackText').addEventListener('change', updateFeedback);
   $('finishEditing').addEventListener('click', () => $('reviewFeedback').focus());

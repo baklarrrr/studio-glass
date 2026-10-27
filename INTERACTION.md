@@ -20,6 +20,8 @@ Choose Auto, Codex or Claude, then Review feedback and Send. Editing and review 
 
 Feedback shows shared saved receipts from the PC, including requests made on the sidebar. Opening one requests its exact review ID and full feedback. Progress reads `dispatch.status` before `status`/`state`; returned pictures use `dispatch.resultAssetId`, falling back to its legacy top-level field. A returned picture first goes Back to its receipt. Only its explicit Revise this picture action starts a fresh root → picture → feedback branch; earlier receipts remain in Feedback. This keeps all subsequent revision cycles within five total history entries including the root.
 
+An original picture with a stopped receipt also offers New feedback. This explicit action opens a blank draft for the exact version currently shown; its prior receipt remains in Feedback and View feedback still opens it. New feedback is available for ready, review-ready, completed, failed/error, rejected, interrupted, needs-context and cancelled outcomes. Review-ready still means Needs your review, including a finished acknowledgement with no result picture; New feedback starts a separate request and does not imply approval. Pending uncertainty and queued/starting/running/waiting work remain protected; neither New feedback nor version adoption can clear them. A new request receives a new durable review ID only when Send is selected. No receipt is cleared merely by loading a picture.
+
 Encrypted MQTT requests use `review-list`, `review-open`, `review-submit`, `review-inbox` and `review-status`, each with a fresh request UUID. Exact receipt lookup supplies both `assetId` and `reviewId`. Responses arrive on the existing paired topic's `/r` channel, with `{t:'review',id,ok,data}` or `{t:'review',id,ok:false,error}`. Review sends never enter the dashboard's offline outbox or reconnect replay window. The local sidebar transport is explicitly enabled by `window.STUDIO_LOCAL = true`; it uses same-origin `/local/summary` and `/local/review`, bypasses MQTT/pairing and does not register a service worker. Only that mode installs a geometric desktop Arrow adapter and Escape → Back. Escape from a focused textarea first exits text editing; a visible Finish editing control does the same. Local endpoints are excluded from shell caching.
 
 Gallery paging retains the relay's opaque request cursors as a history stack. First-page requests omit the cursor; Next uses `nextCursor`, Previous reuses the saved prior cursor, and `offset` is only a display count. An expired page offers a fresh gallery reload. Error replies after a possible feedback commit retain the pending review ID and exact payload: `uncertain: true`, known transport/server failures and unrecognized errors cannot be treated as definite rejections. Only explicit validation or authorization rejection permits correcting that pending draft.
@@ -30,6 +32,7 @@ Requires Python with Playwright and a local Chrome installation. The navigation 
 
 ```
 python tests/navigation_overhaul_test.py
+python tests/feedback_renewal_test.py
 python tests/review_transport_test.py
 python tests/service_worker_test.py
 python tests/run_regressions.py

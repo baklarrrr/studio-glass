@@ -37,13 +37,13 @@ def run():
                     checks.append({'name':name,'passed':bool(ok)}); print(('PASS ' if ok else 'FAIL ')+name); assert ok,name
                 names = page.evaluate('caches.keys()')
                 check('activation preserves other apps on the same origin', 'another-app-v7' in names)
-                check('activation retires only older Studio Glass shells', 'studio-glass-v1' not in names and 'studio-glass-v13-native-navigation' in names)
+                check('activation retires only older Studio Glass shells', 'studio-glass-v1' not in names and 'studio-glass-v14-feedback-renewal' in names)
                 page.evaluate('''async()=>{
                   await fetch('/local/summary').catch(()=>{});
                   await fetch('/private-render.jpg').catch(()=>{});
                   await fetch('/review.js');
                 }''')
-                cached = page.evaluate('''async()=>{const c=await caches.open('studio-glass-v13-native-navigation');return(await c.keys()).map(r=>new URL(r.url).pathname)}''')
+                cached = page.evaluate('''async()=>{const c=await caches.open('studio-glass-v14-feedback-renewal');return(await c.keys()).map(r=>new URL(r.url).pathname)}''')
                 check('local API responses never enter shell cache', not any('/local/' in path for path in cached))
                 check('undeclared same-origin files are not cached', '/private-render.jpg' not in cached)
                 check('declared review code remains available offline', '/review.js' in cached)
