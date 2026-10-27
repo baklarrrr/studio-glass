@@ -25,33 +25,55 @@
         </span>
       </header>
 
-      <div id="headCard" class="head" tabindex="0">
+      <div id="headCard" class="head dashboard" role="button" aria-disabled="true" aria-label="Open render jobs">
         <p id="headline" class="headline quiet">Asking your PC…</p>
         <p id="subline" class="subline"></p>
       </div>
 
-      <div id="rendersBlock" class="block renders" tabindex="0" aria-labelledby="rendersLabel" hidden>
-        <p id="rendersLabel" class="label">Renders</p>
+      <div id="rendersBlock" class="block renders dashboard" role="button" tabindex="0" aria-label="Open all render jobs" hidden>
+        <p id="rendersLabel" class="label">Renders <span class="open-hint">Open jobs ›</span></p>
         <ol id="renderList" class="items"></ol>
       </div>
 
-      <div id="pairRow" class="pair" hidden>
-        <div class="block" tabindex="0" aria-labelledby="aiLabel">
+      <div id="pairRow" class="pair dashboard" hidden>
+        <div class="block" aria-labelledby="aiLabel">
           <p id="aiLabel" class="label">AI at work</p>
           <p id="aiText" class="value"></p>
           <p id="aiNote" class="note"></p>
         </div>
-        <div class="block" tabindex="0" aria-labelledby="costLabel">
+        <div class="block" aria-labelledby="costLabel">
           <p id="costLabel" class="label">AI use today</p>
           <p id="costText" class="value"></p>
           <p id="costNote" class="note"></p>
         </div>
       </div>
 
-      <div id="glassesBlock" class="block line" tabindex="0" aria-labelledby="glassesLabel" hidden>
+      <div id="glassesBlock" class="block line dashboard" aria-labelledby="glassesLabel" hidden>
         <p id="glassesLabel" class="label">Glasses</p>
         <p class="line-text"><span id="glassesText" class="value"></span><span id="glassesNote" class="note"></span></p>
       </div>
+
+      <section id="jobScreen" class="job-screen" aria-labelledby="jobHeading" hidden>
+        <div class="job-heading-row">
+          <h1 id="jobHeading">Render jobs</h1>
+          <div class="job-actions">
+            <button id="backButton" type="button">Back</button>
+            <button id="refreshButton" type="button">Refresh</button>
+          </div>
+        </div>
+        <p id="jobContext" class="job-context"></p>
+        <div id="jobBody" class="job-body">
+          <ol id="jobList" class="job-list"></ol>
+          <p id="jobEmpty" class="job-empty" hidden></p>
+          <div id="detailText" class="detail-text" hidden></div>
+        </div>
+        <nav class="job-pager" aria-label="Pages">
+          <button id="previousPage" type="button">Previous</button>
+          <span id="pagePosition" aria-live="polite"></span>
+          <button id="nextPage" type="button">Next</button>
+        </nav>
+        <p class="job-disclosure">Pictures and feedback aren’t available here yet.</p>
+      </section>
     </section>
 
     <section id="setup" class="screen center" hidden>

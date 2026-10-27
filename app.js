@@ -47,6 +47,8 @@ let firstHelloAt = 0;     // this visit's first hello; an echo older than this i
 let answeredRe = 0;       // the newest of this visit's hellos the PC has answered
 let lastInputAt = Date.now();
 let drawnMinute = -1;
+const view = { screen: 'dashboard', filter: 'all', listPage: 0, detailPage: 0,
+  selected: null, detailText: '', listPages: [], detailPages: [] };
 
 // ---- pairing and crypto ------------------------------------------------------------------
 
@@ -223,9 +225,11 @@ async function handle(text) {
   try { m = await openMessage(text); } catch (e) { return; }
   if (m.t !== 'studio') return;
   if (data && Number(m.at) < Number(data.at)) return; // an older copy one broker still kept
+  const firstSummary = !data;
   data = m;
   if (firstHelloAt && Number(m.re) >= firstHelloAt) answeredRe = Math.max(answeredRe, Number(m.re));
   render();
+  if (firstSummary && view.screen === 'dashboard') $('headCard').focus({ preventScroll: true });
 }
 
 function hello() {
@@ -370,11 +374,15 @@ function renderState() {
     $('subline').textContent = st.sub || '';
   }
   checkCalm(!!st.warn);
+  if (view.screen === 'detail' && data) renderJobs();
 }
 
 function render() {
   drawnMinute = Math.floor(Date.now() / 60000);
-  for (const id of ['rendersBlock', 'pairRow', 'glassesBlock']) $(id).hidden = !data;
+  for (const el of document.querySelectorAll('.dashboard')) el.hidden = view.screen !== 'dashboard' || (el.id !== 'headCard' && !data);
+  $('headCard').setAttribute('aria-disabled', String(!data));
+  $('headCard').tabIndex = data ? 0 : -1;
+  $('headCard').setAttribute('aria-label', data && data.renders && data.renders.attention ? 'Open jobs needing your eyes' : 'Open render jobs');
   renderState();
   drawBattery();
   if (!data) return;
@@ -429,13 +437,16 @@ function render() {
     moreRow.querySelector('.ti').textContent = `+${more} more`;
   };
   showMore();
-  while (block.scrollHeight > block.clientHeight + 1) {
-    const listed = [...list.children].filter((li) => li !== moreRow);
-    if (listed.length <= 1) break;
-    listed[listed.length - 1].remove();
-    more++;
-    showMore();
-  }
+  const lowerEdge = () => block.getBoundingClientRect().bottom - parseFloat(getComputedStyle(block).paddingBottom) - parseFloat(getComputedStyle(block).borderBottomWidth);
+  const fitRenders = () => {
+    while (!block.hidden && (block.scrollHeight > block.clientHeight + 1 || list.getBoundingClientRect().bottom > lowerEdge() + 1)) {
+      const listed = [...list.children].filter((li) => li !== moreRow);
+      if (listed.length <= 1) break;
+      listed[listed.length - 1].remove();
+      more++;
+      showMore();
+    }
+  };
 
   // Speed Light counts AI work; when it isn't running, the count is unknown, not zero.
   const ai = data.ai || {};
@@ -485,6 +496,287 @@ function render() {
   $('glassesText').textContent = value;
   $('glassesText').classList.toggle('quiet', state === 'quiet');
   $('glassesNote').textContent = note.join(' · ');
+  // Measure only after the cards below have their final text and height.
+  fitRenders();
+  renderJobs();
+}
+
+// ---- read-only render drilldown ------------------------------------------------------------
+// No new commands: Refresh uses the same hello as the dashboard. Older relays have no identities,
+// so their detail page keeps a labelled snapshot instead of guessing which job a refresh describes.
+function suppliedJobs() {
+  const r = (data && data.renders) || {};
+  const rich = Array.isArray(r.details);
+  const records = rich ? r.details : (Array.isArray(r.items) ? r.items : []);
+  const counts = new Map();
+  for (const it of records) if (typeof it.id === 'string' && it.id) counts.set(it.id, (counts.get(it.id) || 0) + 1);
+  return records.map((it, index) => {
+    const stable = typeof it.id === 'string' && it.id && counts.get(it.id) === 1;
+    return { ...it, stable: !!stable, rich, jobKey: stable ? `id:${it.id}` : `summary:${index}` };
+  });
+}
+
+function jobState(it) {
+  if (it.st === 'attention') return 'Needs a look';
+  if (it.st === 'queued') return 'Waiting';
+  if (it.st === 'running') return 'Rendering';
+  return 'State not supplied';
+}
+
+function jobProgress(it, asOf) {
+  const parts = [jobState(it)];
+  if (Number.isFinite(it.pct)) parts.push(`${it.pct}%`);
+  if (it.st === 'running' && Number.isFinite(Number(it.since)) && Number(it.since) > 0) {
+    parts.push(runningFor(it.since, asOf || (stateInfo().live ? Date.now() : Number(data.at) || Date.now())));
+  }
+  return parts.join(' · ');
+}
+
+function focusControl(key) {
+  const controls = visibleControls();
+  const found = controls.find((el) => (el.dataset.jobKey || el.id) === key);
+  (found || controls.find((el) => el.classList.contains('job-button')) || controls[0])?.focus({ preventScroll: true });
+}
+
+function showJobList(filter) {
+  if (!data) return;
+  view.screen = 'list';
+  view.filter = filter;
+  view.listPage = 0;
+  view.selected = null;
+  render();
+  focusControl('');
+}
+
+function showJob(it) {
+  view.selected = { key: it.jobKey, stable: it.stable, snapshot: { ...it }, at: data.at };
+  view.screen = 'detail';
+  view.detailPage = 0;
+  view.detailText = '';
+  render();
+  focusControl(view.detailPages.length > 1 ? 'nextPage' : 'backButton');
+}
+
+function goBack() {
+  if (view.screen === 'detail') {
+    view.screen = 'list';
+    const key = view.selected && view.selected.key;
+    renderJobs(key);
+    focusControl(key);
+  } else if (view.screen === 'list') {
+    view.screen = 'dashboard';
+    render();
+    $(view.filter === 'attention' ? 'headCard' : 'rendersBlock').focus({ preventScroll: true });
+  }
+}
+
+function listContext(jobs) {
+  const r = data.renders || {};
+  const notes = [];
+  if (r.ok === false) notes.push('The render queue could not be checked.');
+  const total = view.filter === 'attention' ? Number(r.attention) || 0 : jobs.length;
+  notes.push(view.filter === 'attention'
+    ? jobs.length === total ? `${jobs.length} jobs need attention` : `${jobs.length} of ${total} attention jobs available`
+    : `${jobs.length} render jobs`);
+  const hidden = Array.isArray(r.details) ? Number(r.omitted) || 0 : Number(r.more) || 0;
+  if (hidden) notes.push(`${hidden} more unavailable here`);
+  const queued = Math.max(0, (Number(r.queued) || 0) - suppliedJobs().filter((it) => it.st === 'queued').length);
+  if (queued) notes.push(`${queued} waiting; details unavailable`);
+  if (!Array.isArray(r.details)) notes.push('Short summaries only');
+  return notes.join(' · ');
+}
+
+function jobButton(it) {
+  const li = document.createElement('li');
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = `job-button ${it.st === 'attention' ? 'attention' : it.st === 'queued' ? 'queued' : ''}`;
+  button.dataset.jobKey = it.jobKey;
+  const name = document.createElement('span');
+  name.className = 'job-name';
+  name.textContent = it.ti || 'Unnamed render job';
+  const meta = document.createElement('span');
+  meta.className = 'job-meta';
+  meta.textContent = jobProgress(it);
+  button.append(name, meta);
+  button.addEventListener('click', () => showJob(it));
+  li.append(button);
+  return li;
+}
+
+function paginateJobs(jobs) {
+  const list = $('jobList');
+  const pages = [];
+  let page = [];
+  list.replaceChildren();
+  for (const it of jobs) {
+    const row = jobButton(it);
+    list.append(row);
+    if (list.scrollHeight > $('jobBody').clientHeight && page.length) {
+      pages.push(page);
+      page = [];
+      list.replaceChildren(row);
+    }
+    page.push(it);
+  }
+  if (page.length) pages.push(page);
+  return pages.length ? pages : [[]];
+}
+
+function detailCopy(it, missing, showName) {
+  const selected = view.selected;
+  const parts = showName ? [it.ti || 'Unnamed render job'] : [];
+  if (missing) {
+    parts.push('No longer in this report', 'This job is absent from the latest report. Its current state is unknown. Go back or refresh to check again.');
+    return parts.join('\n\n');
+  }
+  const detail = typeof it.detail === 'string' && it.detail.trim() ? it.detail : '';
+  const why = typeof it.why === 'string' && it.why.trim() ? it.why : '';
+  if (why && detail && !detail.startsWith(why)) parts.push(why);
+  if (detail) parts.push(detail);
+  else if (why) parts.push(why, 'The full reason was not supplied by this relay.');
+  else parts.push('No reason was supplied.');
+  if (it.detailTruncated) parts.push('The relay shortened this reason. The remaining text is unavailable here.');
+  if (!selected.stable) parts.push('Short summary — identity not supplied. This view keeps the report you opened. Go back and reopen for the latest summary.');
+  if (it.source) parts.push(`Source: ${it.source}`);
+  else parts.push('Source not supplied');
+  return parts.join('\n\n');
+}
+
+// Measure actual wrapping, not a character-count guess. Preserve every supplied character across
+// pages, including long filenames and unbroken text; no scrolling or invisible clipped paragraph.
+function paginateDetail(text) {
+  const el = $('detailText');
+  const room = $('jobBody').clientHeight;
+  const pages = [];
+  let rest = text;
+  while (rest.length) {
+    let low = 1;
+    let high = rest.length;
+    let fit = 0;
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      el.textContent = rest.slice(0, mid);
+      if (el.scrollHeight <= room) { fit = mid; low = mid + 1; }
+      else high = mid - 1;
+    }
+    // An extremely short viewport still needs one character per page to make forward progress.
+    fit = Math.max(1, fit);
+    if (fit < rest.length) {
+      const boundary = Math.max(rest.lastIndexOf('\n', fit - 1), rest.lastIndexOf(' ', fit - 1));
+      if (boundary > fit * 0.65) fit = boundary + 1;
+      const code = rest.charCodeAt(fit - 1);
+      if (code >= 0xD800 && code <= 0xDBFF && fit > 1) fit--;
+    }
+    pages.push(rest.slice(0, fit));
+    rest = rest.slice(fit);
+  }
+  return pages.length ? pages : [''];
+}
+
+function renderJobs(returnKey) {
+  $('jobScreen').hidden = view.screen === 'dashboard';
+  if (view.screen === 'dashboard' || !data) return;
+  const oldFocus = document.activeElement;
+  const focusKey = oldFocus && (oldFocus.dataset.jobKey || oldFocus.id);
+  const inList = view.screen === 'list';
+  $('jobHeading').classList.toggle('detail-heading', !inList);
+  $('jobContext').classList.remove('saved');
+  $('jobList').hidden = !inList;
+  $('detailText').hidden = inList;
+  $('jobEmpty').hidden = true;
+  let total;
+  let page;
+  if (inList) {
+    const jobs = suppliedJobs().filter((it) => view.filter !== 'attention' || it.st === 'attention');
+    $('jobHeading').textContent = view.filter === 'attention' ? 'Needs your eyes' : 'Render jobs';
+    $('jobContext').textContent = listContext(jobs);
+    view.listPages = paginateJobs(jobs);
+    const keep = returnKey || (oldFocus && oldFocus.classList.contains('job-button') ? focusKey : '');
+    const location = keep ? view.listPages.findIndex((items) => items.some((it) => it.jobKey === keep)) : -1;
+    if (location >= 0) view.listPage = location;
+    view.listPage = Math.min(view.listPage, view.listPages.length - 1);
+    $('jobList').replaceChildren(...view.listPages[view.listPage].map(jobButton));
+    if (!jobs.length) {
+      $('jobEmpty').hidden = false;
+      $('jobEmpty').textContent = view.filter === 'attention' ? 'No attention-job details were supplied.' : 'No individual render jobs were supplied.';
+    }
+    total = view.listPages.length;
+    page = view.listPage;
+  } else {
+    const selected = view.selected;
+    const current = selected.stable ? suppliedJobs().find((it) => it.stable && it.jobKey === selected.key) : selected.snapshot;
+    $('jobHeading').textContent = (current || selected.snapshot).ti || 'Unnamed render job';
+    const reportTime = Number(selected.at) > 0 ? new Date(Number(selected.at)).toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'time unavailable';
+    const saved = !selected.stable || !stateInfo().live;
+    const status = current ? jobProgress(current, !selected.stable ? Number(selected.at) : null) : '';
+    $('jobContext').textContent = !current ? 'Job unavailable in the latest report' : !selected.stable
+      ? `Saved status: ${status}\nSaved report: ${reportTime} · identity not supplied`
+      : `${saved ? 'Saved status: ' : ''}${status}`;
+    $('jobContext').classList.toggle('saved', saved || !current);
+    const heading = $('jobHeading');
+    const copy = detailCopy(current || selected.snapshot, !current, heading.scrollWidth > heading.clientWidth);
+    view.detailText = copy;
+    view.detailPages = paginateDetail(copy);
+    view.detailPage = Math.min(view.detailPage, view.detailPages.length - 1);
+    $('detailText').textContent = view.detailPages[view.detailPage];
+    total = view.detailPages.length;
+    page = view.detailPage;
+  }
+  $('pagePosition').textContent = `Page ${page + 1} of ${total}`;
+  $('previousPage').disabled = page === 0;
+  $('nextPage').disabled = page >= total - 1;
+  if (oldFocus && (!oldFocus.isConnected || oldFocus.disabled)) focusControl(focusKey);
+}
+
+function changePage(delta) {
+  const prop = view.screen === 'detail' ? 'detailPage' : 'listPage';
+  const pages = view.screen === 'detail' ? view.detailPages : view.listPages;
+  const next = Math.max(0, Math.min(pages.length - 1, view[prop] + delta));
+  if (next === view[prop]) return;
+  view[prop] = next;
+  // A focused job from the old page must not pull us back to that page during reconciliation.
+  $('backButton').focus({ preventScroll: true });
+  renderJobs();
+  focusControl(view.screen === 'detail' ? (delta > 0 && !$('nextPage').disabled ? 'nextPage' : 'previousPage') : '');
+}
+
+function visibleControls() {
+  return [...document.querySelectorAll('#glance button, #glance [role="button"]')]
+    .filter((el) => !el.disabled && el.getAttribute('aria-disabled') !== 'true' && el.getClientRects().length);
+}
+
+function navigateJobs(event) {
+  if (event.altKey || event.ctrlKey || event.metaKey) return;
+  if ((event.key === 'Escape' || event.key === 'Backspace') && view.screen !== 'dashboard') {
+    event.preventDefault(); goBack(); return;
+  }
+  if ((event.key === 'ArrowRight' || event.key === 'ArrowLeft') && view.screen !== 'dashboard') {
+    event.preventDefault(); changePage(event.key === 'ArrowRight' ? 1 : -1); return;
+  }
+  const controls = visibleControls();
+  if (!controls.length) return;
+  if (['ArrowDown', 'ArrowUp', 'ArrowRight', 'ArrowLeft'].includes(event.key)) {
+    event.preventDefault();
+    const index = controls.indexOf(document.activeElement);
+    const delta = event.key === 'ArrowDown' || event.key === 'ArrowRight' ? 1 : -1;
+    controls[Math.max(0, Math.min(controls.length - 1, index < 0 ? 0 : index + delta))].focus({ preventScroll: true });
+  } else if (event.key === 'Enter' || event.key === ' ') {
+    if (event.repeat) { event.preventDefault(); return; }
+    const active = document.activeElement;
+    if (controls.includes(active)) { event.preventDefault(); active.click(); }
+  }
+}
+
+function bindJobNavigation() {
+  $('headCard').addEventListener('click', () => showJobList(data && data.renders && data.renders.attention ? 'attention' : 'all'));
+  $('rendersBlock').addEventListener('click', () => showJobList('all'));
+  $('backButton').addEventListener('click', goBack);
+  $('refreshButton').addEventListener('click', () => { hello(); renderState(); });
+  $('previousPage').addEventListener('click', () => changePage(-1));
+  $('nextPage').addEventListener('click', () => changePage(1));
+  document.addEventListener('keydown', navigateJobs);
+  window.addEventListener('resize', () => { if (data) render(); });
 }
 
 // ---- calm: less light while nobody is touching it -------------------------------------------
@@ -517,7 +809,7 @@ async function main() {
   }
   topic = pair.t;
   key = await crypto.subtle.importKey('raw', fromB64url(pair.k), 'AES-GCM', false, ['encrypt', 'decrypt']);
-  $('headCard').focus();
+  bindJobNavigation();
   for (const ev of ['keydown', 'pointerdown', 'click']) document.addEventListener(ev, wakeUp, true);
   watchBrowserBattery();
   render();
