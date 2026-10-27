@@ -208,3 +208,53 @@ body.calm .headline:not(.attention), body.calm .value, body.calm .items .ti { op
   .feedback-form textarea { min-block-size: 42px; padding: 6px 10px; font-size: 18px; }
   .feedback-form label { font-size: 18px; }
 }
+
+/* Native navigation: root peers, one content scroller, and a docked action rail. */
+.root-navigation { display: flex; flex: none; gap: 10px; }
+.root-navigation button { flex: 1; min-block-size: 44px; border: 1.5px solid var(--hair); border-radius: 10px; font-size: 18px; padding: 7px 10px; }
+.root-navigation [aria-current="page"] { color: var(--mint); }
+.root-navigation button:focus, .desktop-back:focus, .native-scroll:focus { outline: 2px solid var(--mint); outline-offset: 2px; }
+.head, button.renders { text-align: left; }
+.headline, .subline { display: block; }
+#picturesButton { display: none; }
+.desktop-only { display: none; }
+.desktop-preview .desktop-only { display: block; }
+.desktop-back { align-self: flex-start; flex: none; border: 0; padding: 0 2px; min-block-size: 26px; color: var(--soft); font-size: 15px; }
+.native-scroll { overflow: auto; overscroll-behavior: contain; scrollbar-color: var(--dim) #000; scrollbar-width: thin; scroll-padding-block: 6px; }
+.job-body, .review-content { overflow: auto; padding: 3px; }
+.job-list { padding: 3px; }
+.job-button, .picture-list li { flex: none; }
+.picture-list .picture-button { min-block-size: 72px; block-size: auto; }
+.picture-button small { line-height: 1.3; }
+.feedback-excerpt { color: var(--soft); font-size: 15px; line-height: 1.3; margin-top: 5px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.review-content.image-content { overflow: hidden; padding: 0; }
+.review-screen .picture-frame { display: block; block-size: 100%; inline-size: 100%; padding: 0; border: 0; border-radius: 0; min-block-size: 0; background: #000; }
+.review-screen .picture-frame:focus { outline: 2px solid var(--mint); outline-offset: -2px; box-shadow: none; }
+.review-content:focus { outline-offset: 0; }
+.review-actions button { min-inline-size: 0; }
+.review-actions #giveFeedback, .review-actions #revisePicture, .review-actions #reviewFeedback, .review-actions #sendFeedback { border-color: var(--hair); font-weight: 600; }
+.review-actions button:focus { border-color: var(--mint) !important; }
+.review-screen button[aria-disabled="true"] { opacity: .6; }
+.review-heading { align-items: center; }
+.review-top-actions:has(button[hidden]) { display: none; }
+.review-identity { max-block-size: 3.9em; overflow: auto; }
+.feedback-form textarea { flex: 1 1 auto; inline-size: 100%; }
+#finishEditing { align-self: flex-end; min-block-size: 30px; padding: 3px 9px; font-size: 14px; }
+.feedback-edit-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex: none; }
+.review-screen #feedbackCount { font-variant-numeric: tabular-nums; }
+@media (max-width: 420px) {
+  .root-navigation { gap: 7px; }
+  .root-navigation button { font-size: 16px; padding-inline: 6px; }
+  .headline { font-size: 29px; }
+  .subline { font-size: 17px; }
+  .review-actions button { font-size: 15px; padding-inline: 8px; }
+  .feedback-form textarea { font-size: 18px; }
+}
+@media (max-height: 430px) {
+  .topline { font-size: 12px; }
+  .review-heading h1 { font-size: 20px; }
+  .review-identity, .review-message, .review-small { font-size: 12px; }
+  .feedback-form { gap: 4px; }
+  .feedback-form textarea { min-block-size: 64px; }
+  .feedback-form { min-block-size: 0; }
+}

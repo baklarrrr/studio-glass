@@ -25,15 +25,17 @@
         </span>
       </header>
 
-      <div id="headCard" class="head dashboard" role="button" aria-disabled="true" aria-label="Open render jobs">
-        <p id="headline" class="headline quiet">Asking your PC…</p>
-        <p id="subline" class="subline"></p>
-      </div>
+      <nav id="rootNavigation" class="root-navigation" aria-label="Studio views"><button id="studioTab" type="button" data-peer="studio" aria-current="page">Studio</button><button id="picturesTab" type="button" data-peer="pictures">Pictures</button><button id="feedbackTab" type="button" data-peer="feedback">Feedback</button></nav>
+      <button id="desktopBack" class="desktop-back" type="button" hidden>Back</button>
+      <button id="headCard" class="head dashboard" type="button" disabled aria-disabled="true" aria-label="Open render jobs">
+        <span id="headline" class="headline quiet">Asking your PC…</span>
+        <span id="subline" class="subline"></span>
+      </button>
 
-      <div id="rendersBlock" class="block renders dashboard" role="button" tabindex="0" aria-label="Open all render jobs" hidden>
+      <button id="rendersBlock" class="block renders dashboard" type="button" aria-label="Open all render jobs" hidden>
         <p id="rendersLabel" class="label">Renders <span class="open-hint">Open jobs ›</span></p>
         <ol id="renderList" class="items"></ol>
-      </div>
+      </button>
       <button id="picturesButton" class="pictures-entry dashboard" type="button" hidden>Pictures <span>View renders and give feedback ›</span></button>
 
       <div id="pairRow" class="pair dashboard" hidden>
@@ -58,42 +60,40 @@
         <div class="job-heading-row">
           <h1 id="jobHeading">Render jobs</h1>
           <div class="job-actions">
-            <button id="backButton" type="button">Back</button>
+
             <button id="refreshButton" type="button">Refresh</button>
           </div>
         </div>
         <p id="jobContext" class="job-context"></p>
-        <div id="jobBody" class="job-body">
+        <div id="jobBody" class="job-body native-scroll" tabindex="0">
           <ol id="jobList" class="job-list"></ol>
           <p id="jobEmpty" class="job-empty" hidden></p>
           <div id="detailText" class="detail-text" hidden></div>
         </div>
-        <nav class="job-pager" aria-label="Pages">
-          <button id="previousPage" type="button">Previous</button>
-          <span id="pagePosition" aria-live="polite"></span>
-          <button id="nextPage" type="button">Next</button>
-        </nav>
         <button id="jobPicturesButton" class="pictures-link" type="button">Browse render pictures</button>
       </section>
       <section id="reviewScreen" class="review-screen" aria-labelledby="reviewHeading" hidden>
-        <header class="review-heading"><h1 id="reviewHeading">Pictures</h1><div class="review-top-actions"><button id="reviewBack" type="button">Back</button><button id="reviewRefresh" type="button">Refresh</button></div></header>
+        <header class="review-heading"><h1 id="reviewHeading">Pictures</h1><div class="review-top-actions"><button id="reviewRefresh" type="button">Refresh</button></div></header>
         <p id="reviewMessage" class="review-message" role="status" hidden></p>
         <p id="reviewIdentity" class="review-identity" hidden></p>
-        <div id="reviewContent" class="review-content">
-          <ol id="pictureList" class="picture-list" hidden></ol>
-          <div id="pictureFrame" class="picture-frame" tabindex="0" aria-label="Render picture. When zoomed, arrow keys pan; Escape returns to fit." hidden><img id="renderPicture" alt=""></div>
+        <div id="reviewContent" class="review-content native-scroll" tabindex="0" aria-label="View content">
+          <ol id="pictureList" class="picture-list" hidden></ol><ol id="feedbackList" class="picture-list" hidden></ol>
+          <button id="pictureFrame" type="button" class="picture-frame" tabindex="-1" aria-label="Render picture at fit." hidden><img id="renderPicture" alt=""></button>
           <section id="feedbackForm" class="feedback-form" hidden>
             <label for="feedbackText">What should change?</label><textarea id="feedbackText" maxlength="2000" placeholder="Select this field to write or dictate feedback." spellcheck="true"></textarea>
-            <p id="feedbackCount" class="review-small"></p>
+            <div class="feedback-edit-meta"><p id="feedbackCount" class="review-small"></p><button id="finishEditing" class="desktop-only" type="button">Finish editing</button></div>
             <div class="provider-row" role="group" aria-label="Who should work on this?"><span>Send to</span><button type="button" data-provider="auto" aria-pressed="true">Auto</button><button type="button" data-provider="codex" aria-pressed="false">Codex</button><button type="button" data-provider="claude" aria-pressed="false">Claude</button></div>
             <p class="review-small">Feedback creates a Studio task. Progress is shown here.</p>
           </section>
           <div id="reviewText" class="review-text" hidden></div>
         </div>
+        <p id="inboxCoverage" class="review-small" hidden></p>
+        <p id="inspectHint" class="review-small" hidden>Directions move the picture. Select or Back returns to fit.</p>
+        <p id="revisionHint" class="review-small" hidden>Starts a new revision. Earlier feedback stays in Feedback.</p>
         <nav id="reviewPager" class="review-pager" aria-label="Picture or text pages"><button id="reviewPrevious" type="button">Previous</button><span id="reviewPosition" aria-live="polite"></span><button id="reviewNext" type="button">Next</button></nav>
         <div id="reviewActions" class="review-actions">
-          <button id="zoomPicture" type="button" hidden>Zoom 2×</button><button id="giveFeedback" type="button" hidden>Give feedback</button>
-          <button id="reviewFeedback" type="button" hidden>Review feedback</button><button id="sendFeedback" type="button" hidden>Send feedback</button>
+          <button id="zoomPicture" type="button" hidden>Inspect</button><button id="giveFeedback" type="button" hidden>Give feedback</button>
+          <button id="editFeedback" type="button" hidden>Edit feedback</button><button id="revisePicture" type="button" hidden>Revise this picture</button><button id="reviewFeedback" type="button" hidden>Review feedback</button><button id="sendFeedback" type="button" hidden>Send feedback</button>
           <button id="retryFeedback" type="button" hidden>Retry same feedback</button><button id="checkReceipt" type="button" hidden>Check progress</button>
           <button id="usePictureVersion" type="button" hidden>Use this picture version</button><button id="openReviewResult" type="button" hidden>Open result picture</button>
         </div>
@@ -108,6 +108,7 @@
     </section>
   </main>
   <script src="vendor/mqtt.min.js"></script>
+  <script src="navigation.js"></script>
   <script src="review.js"></script>
   <script src="app.js"></script>
 </body>
