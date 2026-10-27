@@ -249,11 +249,9 @@ async function handle(text) {
 function acceptSummary(m) {
   if (m.t !== 'studio') return;
   if (data && Number(m.at) < Number(data.at)) return; // an older copy one broker still kept
-  const firstSummary = !data;
   data = m;
   if (firstHelloAt && Number(m.re) >= firstHelloAt) answeredRe = Math.max(answeredRe, Number(m.re));
   render();
-  if (firstSummary && view.screen === 'dashboard') $('headCard').focus({ preventScroll: true });
 }
 
 function hello() {
@@ -404,11 +402,14 @@ function renderState() {
 function render() {
   drawnMinute = Math.floor(Date.now() / 60000);
   for (const el of document.querySelectorAll('.dashboard')) el.hidden = view.screen !== 'dashboard' || (el.id !== 'headCard' && !data);
+  $('headCard').disabled = !data;
   $('headCard').setAttribute('aria-disabled', String(!data));
   $('headCard').tabIndex = data ? 0 : -1;
   $('headCard').setAttribute('aria-label', data && data.renders && data.renders.attention ? 'Open jobs needing your eyes' : 'Open render jobs');
   renderState();
   drawBattery();
+  $('reviewScreen').hidden = view.screen !== 'review';
+  $('jobScreen').hidden = !['list', 'detail'].includes(view.screen);
   if (!data) return;
 
   const r = data.renders || {};
@@ -563,37 +564,14 @@ function focusControl(key) {
 }
 
 function showJobList(filter) {
-  if (!data) return;
-  view.screen = 'list';
-  view.filter = filter;
-  view.listPage = 0;
-  view.selected = null;
-  render();
-  focusControl('');
+  if (!data || navigation.route.kind !== 'root') return;
+  navigateTo({ kind: 'jobs', filter });
 }
-
 function showJob(it) {
-  view.selected = { key: it.jobKey, stable: it.stable, snapshot: { ...it }, at: data.at };
-  view.screen = 'detail';
-  view.detailPage = 0;
-  view.detailText = '';
-  render();
-  focusControl(view.detailPages.length > 1 ? 'nextPage' : 'backButton');
+  if (navigation.route.kind !== 'jobs') return;
+  navigateTo({ kind: 'job', filter: view.filter, selected: { key: it.jobKey, stable: it.stable, snapshot: { ...it }, at: data.at } });
 }
-
-function goBack() {
-  if (view.screen === 'review') { reviewBack(); return; }
-  if (view.screen === 'detail') {
-    view.screen = 'list';
-    const key = view.selected && view.selected.key;
-    renderJobs(key);
-    focusControl(key);
-  } else if (view.screen === 'list') {
-    view.screen = 'dashboard';
-    render();
-    $(view.filter === 'attention' ? 'headCard' : 'rendersBlock').focus({ preventScroll: true });
-  }
-}
+function goBack() { if (navigation.route.depth) history.back(); }
 
 function listContext(jobs) {
   const r = data.renders || {};
@@ -624,28 +602,10 @@ function jobButton(it) {
   meta.className = 'job-meta';
   meta.textContent = jobProgress(it);
   button.append(name, meta);
-  button.addEventListener('click', () => showJob(it));
+  button.jobRecord = it;
+  button.addEventListener('click', () => showJob(button.jobRecord));
   li.append(button);
   return li;
-}
-
-function paginateJobs(jobs) {
-  const list = $('jobList');
-  const pages = [];
-  let page = [];
-  list.replaceChildren();
-  for (const it of jobs) {
-    const row = jobButton(it);
-    list.append(row);
-    if (list.scrollHeight > $('jobBody').clientHeight && page.length) {
-      pages.push(page);
-      page = [];
-      list.replaceChildren(row);
-    }
-    page.push(it);
-  }
-  if (page.length) pages.push(page);
-  return pages.length ? pages : [[]];
 }
 
 function detailCopy(it, missing, showName) {
@@ -668,66 +628,28 @@ function detailCopy(it, missing, showName) {
   return parts.join('\n\n');
 }
 
-// Measure actual wrapping, not a character-count guess. Preserve every supplied character across
-// pages, including long filenames and unbroken text; no scrolling or invisible clipped paragraph.
-function paginateDetail(text) {
-  const el = $('detailText');
-  const room = $('jobBody').clientHeight;
-  const pages = [];
-  let rest = text;
-  while (rest.length) {
-    let low = 1;
-    let high = rest.length;
-    let fit = 0;
-    while (low <= high) {
-      const mid = Math.floor((low + high) / 2);
-      el.textContent = rest.slice(0, mid);
-      if (el.scrollHeight <= room) { fit = mid; low = mid + 1; }
-      else high = mid - 1;
-    }
-    // An extremely short viewport still needs one character per page to make forward progress.
-    fit = Math.max(1, fit);
-    if (fit < rest.length) {
-      const boundary = Math.max(rest.lastIndexOf('\n', fit - 1), rest.lastIndexOf(' ', fit - 1));
-      if (boundary > fit * 0.65) fit = boundary + 1;
-      const code = rest.charCodeAt(fit - 1);
-      if (code >= 0xD800 && code <= 0xDBFF && fit > 1) fit--;
-    }
-    pages.push(rest.slice(0, fit));
-    rest = rest.slice(fit);
-  }
-  return pages.length ? pages : [''];
-}
-
-function renderJobs(returnKey) {
-  $('jobScreen').hidden = !['list', 'detail'].includes(view.screen);
-  if (!['list', 'detail'].includes(view.screen) || !data) return;
-  const oldFocus = document.activeElement;
-  const focusKey = oldFocus && (oldFocus.dataset.jobKey || oldFocus.id);
+function renderJobs() {
   const inList = view.screen === 'list';
+  $('jobScreen').hidden = !['list', 'detail'].includes(view.screen);
+  if ($('jobScreen').hidden || !data) return;
   $('jobHeading').classList.toggle('detail-heading', !inList);
-  $('jobContext').classList.remove('saved');
-  $('jobList').hidden = !inList;
-  $('detailText').hidden = inList;
+  $('jobList').hidden = !inList; $('detailText').hidden = inList;
   $('jobEmpty').hidden = true;
-  let total;
-  let page;
+  $('jobBody').tabIndex = 0;
   if (inList) {
     const jobs = suppliedJobs().filter((it) => view.filter !== 'attention' || it.st === 'attention');
     $('jobHeading').textContent = view.filter === 'attention' ? 'Needs your eyes' : 'Render jobs';
     $('jobContext').textContent = listContext(jobs);
-    view.listPages = paginateJobs(jobs);
-    const keep = returnKey || (oldFocus && oldFocus.classList.contains('job-button') ? focusKey : '');
-    const location = keep ? view.listPages.findIndex((items) => items.some((it) => it.jobKey === keep)) : -1;
-    if (location >= 0) view.listPage = location;
-    view.listPage = Math.min(view.listPage, view.listPages.length - 1);
-    $('jobList').replaceChildren(...view.listPages[view.listPage].map(jobButton));
-    if (!jobs.length) {
-      $('jobEmpty').hidden = false;
-      $('jobEmpty').textContent = view.filter === 'attention' ? 'No attention-job details were supplied.' : 'No individual render jobs were supplied.';
+    const list = $('jobList'), wanted = new Set(jobs.map((it) => it.jobKey));
+    for (const row of [...list.children]) if (!wanted.has(row.firstElementChild.dataset.jobKey)) row.remove();
+    for (const it of jobs) {
+      let button = [...list.querySelectorAll('button')].find((el) => el.dataset.jobKey === it.jobKey);
+      if (!button) { const row = jobButton(it); list.append(row); button = row.firstElementChild; }
+      button.querySelector('.job-name').textContent = it.ti || 'Unnamed render job';
+      button.querySelector('.job-meta').textContent = jobProgress(it);
+      button.jobRecord = it;
     }
-    total = view.listPages.length;
-    page = view.listPage;
+    if (!jobs.length) { $('jobEmpty').hidden = false; $('jobEmpty').textContent = 'No individual render jobs were supplied.'; }
   } else {
     const selected = view.selected;
     const current = selected.stable ? suppliedJobs().find((it) => it.stable && it.jobKey === selected.key) : selected.snapshot;
@@ -736,74 +658,20 @@ function renderJobs(returnKey) {
     const saved = !selected.stable || !stateInfo().live;
     const status = current ? jobProgress(current, !selected.stable ? Number(selected.at) : null) : '';
     $('jobContext').textContent = !current ? 'Job unavailable in the latest report' : !selected.stable
-      ? `Saved status: ${status}\nSaved report: ${reportTime} · identity not supplied`
-      : `${saved ? 'Saved status: ' : ''}${status}`;
+      ? `Saved status: ${status}\nSaved report: ${reportTime} · identity not supplied` : `${saved ? 'Saved status: ' : ''}${status}`;
     $('jobContext').classList.toggle('saved', saved || !current);
-    const heading = $('jobHeading');
-    const copy = detailCopy(current || selected.snapshot, !current, heading.scrollWidth > heading.clientWidth);
-    view.detailText = copy;
-    view.detailPages = paginateDetail(copy);
-    view.detailPage = Math.min(view.detailPage, view.detailPages.length - 1);
-    $('detailText').textContent = view.detailPages[view.detailPage];
-    total = view.detailPages.length;
-    page = view.detailPage;
+    const copy = detailCopy(current || selected.snapshot, !current, true);
+    if ($('detailText').textContent !== copy) $('detailText').textContent = copy;
   }
-  $('pagePosition').textContent = `Page ${page + 1} of ${total}`;
-  $('previousPage').disabled = page === 0;
-  $('nextPage').disabled = page >= total - 1;
-  if (oldFocus && (!oldFocus.isConnected || oldFocus.disabled)) focusControl(focusKey);
 }
-
-function changePage(delta) {
-  const prop = view.screen === 'detail' ? 'detailPage' : 'listPage';
-  const pages = view.screen === 'detail' ? view.detailPages : view.listPages;
-  const next = Math.max(0, Math.min(pages.length - 1, view[prop] + delta));
-  if (next === view[prop]) return;
-  view[prop] = next;
-  // A focused job from the old page must not pull us back to that page during reconciliation.
-  $('backButton').focus({ preventScroll: true });
-  renderJobs();
-  focusControl(view.screen === 'detail' ? (delta > 0 && !$('nextPage').disabled ? 'nextPage' : 'previousPage') : '');
-}
-
 function visibleControls() {
-  return [...document.querySelectorAll('#glance button, #glance [role="button"], #glance textarea, #pictureFrame')]
-    .filter((el) => !el.disabled && el.getAttribute('aria-disabled') !== 'true' && el.getClientRects().length);
+  return [...document.querySelectorAll('#glance button, #glance textarea, #glance [tabindex="0"]')]
+    .filter((el) => !el.disabled && el.tabIndex >= 0 && el.getAttribute('aria-disabled') !== 'true' && el.getClientRects().length);
 }
-
-function navigateJobs(event) {
-  if (event.altKey || event.ctrlKey || event.metaKey) return;
-  if (event.target.matches?.('textarea, input, select') || event.target.isContentEditable || event.isComposing) return;
-  if (view.screen === 'review') { navigateReview(event); return; }
-  if ((event.key === 'Escape' || event.key === 'Backspace') && view.screen !== 'dashboard') {
-    event.preventDefault(); goBack(); return;
-  }
-  if ((event.key === 'ArrowRight' || event.key === 'ArrowLeft') && view.screen !== 'dashboard') {
-    event.preventDefault(); changePage(event.key === 'ArrowRight' ? 1 : -1); return;
-  }
-  const controls = visibleControls();
-  if (!controls.length) return;
-  if (['ArrowDown', 'ArrowUp', 'ArrowRight', 'ArrowLeft'].includes(event.key)) {
-    event.preventDefault();
-    const index = controls.indexOf(document.activeElement);
-    const delta = event.key === 'ArrowDown' || event.key === 'ArrowRight' ? 1 : -1;
-    controls[Math.max(0, Math.min(controls.length - 1, index < 0 ? 0 : index + delta))].focus({ preventScroll: true });
-  } else if (event.key === 'Enter' || event.key === ' ') {
-    if (event.repeat) { event.preventDefault(); return; }
-    const active = document.activeElement;
-    if (controls.includes(active)) { event.preventDefault(); active.click(); }
-  }
-}
-
 function bindJobNavigation() {
-  $('headCard').addEventListener('click', () => showJobList(data && data.renders && data.renders.attention ? 'attention' : 'all'));
+  $('headCard').addEventListener('click', () => showJobList(data?.renders?.attention ? 'attention' : 'all'));
   $('rendersBlock').addEventListener('click', () => showJobList('all'));
-  $('backButton').addEventListener('click', goBack);
   $('refreshButton').addEventListener('click', () => { hello(); renderState(); });
-  $('previousPage').addEventListener('click', () => changePage(-1));
-  $('nextPage').addEventListener('click', () => changePage(1));
-  document.addEventListener('keydown', navigateJobs);
-  window.addEventListener('resize', () => { if (data) render(); });
 }
 
 // ---- calm: less light while nobody is touching it -------------------------------------------
@@ -840,6 +708,7 @@ async function main() {
   }
   bindJobNavigation();
   bindReview();
+  bindNavigation();
   for (const ev of ['keydown', 'pointerdown', 'click']) document.addEventListener(ev, wakeUp, true);
   watchBrowserBattery();
   render();

@@ -3,8 +3,8 @@
 // Keeps the app shell on the glasses so it opens quickly on a slow link. Network first, so an update
 // shows on the next launch. Only this site's own files are handled; the studio link (MQTT over
 // WebSocket) always goes to the network.
-const CACHE = 'studio-glass-v12-picture-review-candidate';
-const SHELL = ['./', 'index.html', 'style.css', 'app.js', 'review.js', 'vendor/mqtt.min.js', 'icon.svg', 'icon-mono.svg'];
+const CACHE = 'studio-glass-v13-native-navigation';
+const SHELL = ['./', 'index.html', 'style.css', 'app.js', 'review.js', 'navigation.js', 'vendor/mqtt.min.js', 'icon.svg', 'icon-mono.svg'];
 const SHELL_PATHS = new Set(SHELL.map((path) => new URL(path, self.location.href).pathname));
 
 // no-cache everywhere: always ask the server (a tiny 304 when nothing changed), so neither the copy
