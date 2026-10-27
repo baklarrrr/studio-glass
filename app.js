@@ -4,7 +4,8 @@
 // The studio PC's relay sends a small summary (renders, AI at work, today's AI use at API prices, the
 // glasses tracker) through free public MQTT brokers on a private random topic (no daily cap; any
 // broker can be down). It is AES-GCM encrypted with the key in this page's URL fragment, which
-// browsers never send to a server. Read-only: nothing here can change anything on the PC.
+// browsers never send to a server. Dashboard status is read-only. Reviewed picture feedback uses
+// a separate correlated request and durable receipt through the existing Studio task route.
 //
 // The latest summary is retained on the brokers, so it shows the moment the page connects. The page
 // says hello when it opens and every two minutes while it is on screen; the relay answers each hello
@@ -124,6 +125,7 @@ function loadMqtt() {
 }
 
 function openLink() {
+  if (window.STUDIO_LOCAL) return;
   if (links.length) return;
   // Tests (and only tests) supply their own link.
   if (window.__testLink) { links = [window.__testLink]; window.__testLink.onMessage = handle; flushOutbox(); return; }
@@ -170,6 +172,7 @@ function addBroker({ url, ...extra }) {
     clearTimeout(client.retryTimer);
     client.retryTimer = 0;
     client.subscribe(`bkr/${topic}/s`, { qos: 1 });
+    client.subscribe(`bkr/${topic}/r`, { qos: 1 });
     linkChanged();
     const now = Date.now();
     sentLately = sentLately.filter((o) => now - o.at < RESEND_WINDOW);
@@ -208,13 +211,29 @@ function flushOutbox() {
   }
 }
 
-async function send(c, ts = Date.now()) {
-  const body = await seal({ c, ts });
+async function send(c, ts = Date.now(), args = {}) {
+  const isReview = c.startsWith('review-');
+  const payload = { ...args, c, ts };
+  if (isReview && !payload.id) payload.id = crypto.randomUUID();
+  if (window.STUDIO_LOCAL) {
+    if (c === 'bye') return;
+    const response = await fetch(isReview ? '/local/review' : '/local/summary', isReview
+      ? { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), cache: 'no-store' }
+      : { credentials: 'same-origin', cache: 'no-store' });
+    const message = await response.json();
+    if (isReview) handleReviewReply(message);
+    else if (response.ok && message.t === 'studio') acceptSummary({ ...message, re: ts });
+    else throw new Error('The local Studio connection did not answer.');
+    return payload.id;
+  }
   const live = links.filter((l) => l.connected);
+  if (isReview && !live.length) throw new Error('Offline. Your feedback is kept on this device.');
+  const body = await seal(payload);
   if (!live.length) { outbox.push({ body, at: ts }); return; }
   for (const l of live) l.publish(`bkr/${topic}/c`, body, { qos: 1 });
-  sentLately.push({ body, at: Date.now() });
+  if (!isReview) sentLately.push({ body, at: Date.now() });
   if (sentLately.length > 20) sentLately.shift();
+  return payload.id;
 }
 
 async function handle(text) {
@@ -223,6 +242,11 @@ async function handle(text) {
   if (recent.length > 8) recent.shift();
   let m;
   try { m = await openMessage(text); } catch (e) { return; }
+  if (m.t === 'review') { handleReviewReply(m); return; }
+  acceptSummary(m);
+}
+
+function acceptSummary(m) {
   if (m.t !== 'studio') return;
   if (data && Number(m.at) < Number(data.at)) return; // an older copy one broker still kept
   const firstSummary = !data;
@@ -236,7 +260,7 @@ function hello() {
   prevHelloAt = helloAt;
   helloAt = Date.now();
   if (!firstHelloAt) firstHelloAt = helloAt;
-  send('hello', helloAt);
+  send('hello', helloAt).catch(() => renderState());
 }
 
 // On screen: live link, a hello every two minutes and a clock for the state line. Hidden: nothing.
@@ -253,7 +277,7 @@ function onVisibility() {
     tickTimer = setInterval(tick, 5000);
     render();
   } else {
-    send('bye').then(closeLink);
+    send('bye').then(closeLink).catch(closeLink);
   }
 }
 
@@ -343,7 +367,7 @@ function runningFor(since, asOf) {
 // The link first, then whether the PC answered this visit's latest hello.
 function stateInfo() {
   const now = Date.now();
-  if (typeof mqtt === 'undefined' && mqttTries >= 10 && !window.__testLink) {
+  if (!window.STUDIO_LOCAL && typeof mqtt === 'undefined' && mqttTries >= 10 && !window.__testLink) {
     return { text: 'No link yet: press Back, then Refresh', warn: true, head: 'No link yet', sub: 'Press Back, then Refresh' };
   }
   if (linkDownSince && now - linkDownSince > 5000) return { text: 'Reconnecting…', warn: true, head: 'Reconnecting…' };
@@ -558,6 +582,7 @@ function showJob(it) {
 }
 
 function goBack() {
+  if (view.screen === 'review') { reviewBack(); return; }
   if (view.screen === 'detail') {
     view.screen = 'list';
     const key = view.selected && view.selected.key;
@@ -675,8 +700,8 @@ function paginateDetail(text) {
 }
 
 function renderJobs(returnKey) {
-  $('jobScreen').hidden = view.screen === 'dashboard';
-  if (view.screen === 'dashboard' || !data) return;
+  $('jobScreen').hidden = !['list', 'detail'].includes(view.screen);
+  if (!['list', 'detail'].includes(view.screen) || !data) return;
   const oldFocus = document.activeElement;
   const focusKey = oldFocus && (oldFocus.dataset.jobKey || oldFocus.id);
   const inList = view.screen === 'list';
@@ -742,12 +767,14 @@ function changePage(delta) {
 }
 
 function visibleControls() {
-  return [...document.querySelectorAll('#glance button, #glance [role="button"]')]
+  return [...document.querySelectorAll('#glance button, #glance [role="button"], #glance textarea, #pictureFrame')]
     .filter((el) => !el.disabled && el.getAttribute('aria-disabled') !== 'true' && el.getClientRects().length);
 }
 
 function navigateJobs(event) {
   if (event.altKey || event.ctrlKey || event.metaKey) return;
+  if (event.target.matches?.('textarea, input, select') || event.target.isContentEditable || event.isComposing) return;
+  if (view.screen === 'review') { navigateReview(event); return; }
   if ((event.key === 'Escape' || event.key === 'Backspace') && view.screen !== 'dashboard') {
     event.preventDefault(); goBack(); return;
   }
@@ -801,19 +828,22 @@ function registerServiceWorker() {
 }
 
 async function main() {
-  const pair = readPairing();
-  if (!pair || !window.crypto || !crypto.subtle) {
+  const pair = window.STUDIO_LOCAL ? null : readPairing();
+  if ((!pair && !window.STUDIO_LOCAL) || !window.crypto || !crypto.subtle) {
     $('glance').hidden = true;
     $('setup').hidden = false;
     return;
   }
-  topic = pair.t;
-  key = await crypto.subtle.importKey('raw', fromB64url(pair.k), 'AES-GCM', false, ['encrypt', 'decrypt']);
+  if (pair) {
+    topic = pair.t;
+    key = await crypto.subtle.importKey('raw', fromB64url(pair.k), 'AES-GCM', false, ['encrypt', 'decrypt']);
+  }
   bindJobNavigation();
+  bindReview();
   for (const ev of ['keydown', 'pointerdown', 'click']) document.addEventListener(ev, wakeUp, true);
   watchBrowserBattery();
   render();
-  registerServiceWorker();
+  if (!window.STUDIO_LOCAL) registerServiceWorker();
   document.addEventListener('visibilitychange', onVisibility);
   window.addEventListener('pagehide', () => send('bye'));
   if (document.visibilityState === 'visible') onVisibility();

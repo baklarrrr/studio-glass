@@ -32,6 +32,6 @@ try:
 finally:
     server.shutdown()
     server.server_close()
-    evidence = ROOT.parent / 'evidence'
+    evidence = Path(os.environ.get('STUDIO_UI_EVIDENCE', ROOT.parent / 'evidence-ui'))
     evidence.mkdir(exist_ok=True)
     (evidence / 'existing-regressions.txt').write_text('\n'.join(output), encoding='utf-8')

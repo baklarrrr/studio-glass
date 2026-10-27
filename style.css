@@ -25,6 +25,10 @@ html, body {
 main { block-size: 100%; }
 p, h1 { margin: 0; }
 button { font: inherit; color: inherit; background: transparent; cursor: pointer; }
+.pictures-entry, .pictures-link { border: 1.5px solid var(--hair); border-radius: 12px; padding: 9px 16px; min-block-size: 48px; text-align: left; font-size: 20px; flex: none; }
+.pictures-entry span { float: right; font-size: 15px; color: var(--soft); padding-top: 3px; }
+.pictures-link { font-size: 16px; }
+.pictures-entry:focus, .pictures-link:focus { outline: none; border-color: var(--mint); box-shadow: var(--glow); }
 svg { fill: currentColor; }
 
 .screen { display: flex; flex-direction: column; gap: 12px; block-size: 100%; padding: 22px 30px 20px; overflow: hidden; }
@@ -84,7 +88,7 @@ svg { fill: currentColor; }
 .value.quiet { color: var(--soft); font-weight: 600; font-size: 18px; }
 .line-text .value { white-space: nowrap; flex: none; }
 
-/* Focus is a ring, never a fill: the page is read-only, and a lit card would only spend light. */
+/* Focus is a ring, never a fill: preserve the additive display's black background. */
 .head:focus, .block:focus { border-color: var(--mint); box-shadow: var(--glow); }
 .head[aria-disabled="false"], .renders[role="button"] { cursor: pointer; }
 
@@ -144,4 +148,63 @@ body.calm .headline:not(.attention), body.calm .value, body.calm .items .ti { op
   body.calm .brand, body.calm .state, body.calm .label, body.calm .note, body.calm .subline,
   body.calm .items .st, body.calm .items .mark, body.calm .gbat, body.calm .headline, body.calm .value,
   body.calm .items .ti { transition: opacity 900ms ease; }
+}
+
+/* Picture review: one image, its identity, and deliberate feedback; never a fabricated preview. */
+.review-screen { display: flex; flex: 1; min-block-size: 0; flex-direction: column; gap: 10px; }
+.review-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex: none; }
+.review-heading h1 { font-size: 26px; line-height: 1.2; min-inline-size: 0; }
+.review-heading .picture-heading { font-size: 22px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.review-top-actions { display: flex; gap: 8px; flex: none; }
+.review-screen button { border: 1.5px solid var(--hair); border-radius: 12px; min-block-size: 46px; padding: 8px 12px; font-size: 17px; }
+.review-screen button:focus, .review-screen textarea:focus, .picture-frame:focus { outline: none; border-color: var(--mint); box-shadow: var(--glow); }
+.review-screen button:disabled { opacity: 0.38; cursor: default; }
+.review-message { flex: none; font-size: 15px; line-height: 1.3; color: var(--warn); overflow-wrap: anywhere; }
+.review-identity { flex: none; font-size: 14px; line-height: 1.3; color: var(--soft); overflow-wrap: anywhere; }
+.review-content { flex: 1; min-block-size: 0; overflow: hidden; }
+.picture-list { margin: 0; padding: 3px; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.picture-list .picture-button { inline-size: 100%; block-size: 68px; display: flex; flex-direction: column; justify-content: center; text-align: left; padding: 8px 14px; }
+.picture-button span { font-size: 20px; font-weight: 700; inline-size: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.picture-button small { color: var(--soft); font-size: 14px; margin-top: 3px; }
+.picture-frame { block-size: 100%; inline-size: 100%; overflow: hidden; border: 1px solid transparent; border-radius: 4px; }
+.picture-frame img { display: block; block-size: 100%; inline-size: 100%; object-fit: contain; transform-origin: center; }
+.review-pager { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex: none; }
+.review-pager span { font-size: 15px; color: var(--soft); text-align: center; }
+.review-actions { display: flex; gap: 10px; flex: none; flex-wrap: wrap; }
+.review-actions button { flex: 1; }
+.review-actions #giveFeedback, .review-actions #reviewFeedback, .review-actions #sendFeedback { border-color: var(--mint); }
+.feedback-form { display: flex; flex-direction: column; block-size: 100%; gap: 8px; }
+.feedback-form label { font-size: 21px; font-weight: 700; }
+.feedback-form textarea { flex: 1; min-block-size: 70px; resize: none; background: transparent; color: var(--ink); border: 1.5px solid var(--hair); border-radius: 12px; padding: 12px; font: 20px/1.4 system-ui,sans-serif; }
+.feedback-form textarea::placeholder { color: var(--dim); }
+.provider-row { display: flex; align-items: center; gap: 8px; flex: none; }
+.provider-row span { font-size: 15px; color: var(--soft); }
+.provider-row button { flex: 1; padding-inline: 8px; }
+.provider-row [aria-pressed="true"] { border-color: var(--mint); color: var(--mint); }
+.review-small { font-size: 14px; line-height: 1.3; color: var(--soft); flex: none; }
+.review-text { font-size: 21px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; padding: 3px; }
+@media (max-width: 420px) {
+  .screen { padding: 16px; gap: 10px; }
+  .topline { gap: 8px; }
+  .brand { font-size: 11px; }
+  .right { gap: 7px; }
+  .state { font-size: 13px; gap: 5px; }
+  .review-heading { align-items: flex-start; gap: 8px; }
+  .review-heading h1 { font-size: 22px; }
+  .review-top-actions { gap: 5px; }
+  .review-top-actions button { padding-inline: 8px; font-size: 15px; }
+  .review-text { font-size: 19px; }
+  .review-actions { gap: 8px; }
+  .provider-row { gap: 5px; }
+  .provider-row button { font-size: 15px; }
+  .pictures-entry span { float: none; display: block; padding-top: 1px; }
+}
+@media (max-height: 430px) {
+  .screen { padding-block: 10px; gap: 6px; }
+  .review-screen { gap: 6px; }
+  .review-heading h1 { font-size: 22px; }
+  .review-screen button { min-block-size: 38px; padding-block: 5px; }
+  .feedback-form { gap: 5px; }
+  .feedback-form textarea { min-block-size: 42px; padding: 6px 10px; font-size: 18px; }
+  .feedback-form label { font-size: 18px; }
 }

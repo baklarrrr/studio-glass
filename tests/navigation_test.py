@@ -4,6 +4,7 @@ No broker or production relay is contacted. Every browser/server closes in final
 Screenshots go to the task's evidence directory, never a public bundle.
 """
 import json
+import os
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -12,7 +13,7 @@ from threading import Thread
 from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
-EVIDENCE = ROOT.parent / 'evidence'
+EVIDENCE = Path(os.environ.get('STUDIO_UI_EVIDENCE', ROOT.parent / 'evidence-ui'))
 EVIDENCE.mkdir(exist_ok=True)
 
 
@@ -97,7 +98,7 @@ def run():
                 jobs[4]['pct'] = 68
                 feed(jobs[:5], renders={'more': 1})
                 check('first summary focuses the actionable headline', page.evaluate('document.activeElement.id === "headCard"'))
-                check('dashboard only actionable cards can focus', page.evaluate('visibleControls().map(el=>el.id).join(",")') == 'headCard,rendersBlock')
+                check('dashboard only actionable cards can focus', page.evaluate('visibleControls().map(el=>el.id).join(",")') == 'headCard,rendersBlock,picturesButton')
                 check('dashboard rows stay above the bottom padding', page.evaluate('''() => {const b=$('rendersBlock'), s=getComputedStyle(b);return $('renderList').getBoundingClientRect().bottom <= b.getBoundingClientRect().bottom - parseFloat(s.paddingBottom) - parseFloat(s.borderBottomWidth) + 1;}'''))
                 page.focus('#headCard')
                 page.screenshot(path=str(EVIDENCE / 'candidate-dashboard-600.png'))
@@ -208,7 +209,7 @@ def run():
                 feed([], head='Quiet', renders={'queued': 0})
                 page.click('#headCard')
                 check('quiet headline opens honest empty list', page.evaluate('view.filter === "all"') and 'No individual render jobs' in text('#jobEmpty'))
-                check('empty list has no disabled pager in focus order', page.evaluate('visibleControls().map(el=>el.id).join(",")') == 'backButton,refreshButton')
+                check('empty list has no disabled pager in focus order', page.evaluate('visibleControls().map(el=>el.id).join(",")') == 'backButton,refreshButton,jobPicturesButton')
                 check('no JavaScript errors', not errors)
                 check('no external network attempted', not external)
                 (EVIDENCE / 'navigation-results.json').write_text(json.dumps({'checks': checks, 'errors': errors, 'external_requests': external}, indent=2), encoding='utf-8')

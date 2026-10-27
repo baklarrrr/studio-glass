@@ -3,8 +3,9 @@
 // Keeps the app shell on the glasses so it opens quickly on a slow link. Network first, so an update
 // shows on the next launch. Only this site's own files are handled; the studio link (MQTT over
 // WebSocket) always goes to the network.
-const CACHE = 'studio-glass-v11-drilldown-candidate';
-const SHELL = ['./', 'index.html', 'style.css', 'app.js', 'vendor/mqtt.min.js', 'icon.svg', 'icon-mono.svg'];
+const CACHE = 'studio-glass-v12-picture-review-candidate';
+const SHELL = ['./', 'index.html', 'style.css', 'app.js', 'review.js', 'vendor/mqtt.min.js', 'icon.svg', 'icon-mono.svg'];
+const SHELL_PATHS = new Set(SHELL.map((path) => new URL(path, self.location.href).pathname));
 
 // no-cache everywhere: always ask the server (a tiny 304 when nothing changed), so neither the copy
 // kept here nor a Refresh can pick up a version the browser's own cache held after an update.
@@ -17,14 +18,14 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k.startsWith('studio-glass-') && k !== CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
   );
 });
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
-  if (event.request.method !== 'GET' || url.origin !== self.location.origin) return;
+  if (event.request.method !== 'GET' || url.origin !== self.location.origin || !SHELL_PATHS.has(url.pathname)) return;
   event.respondWith((async () => {
     const cache = await caches.open(CACHE);
     try {
