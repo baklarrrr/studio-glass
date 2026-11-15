@@ -696,6 +696,7 @@ function registerServiceWorker() {
 }
 
 async function main() {
+  if (window.__studioForward) return; // this visit is on its way to Bakar Home (see index.html)
   const pair = window.STUDIO_LOCAL ? null : readPairing();
   if ((!pair && !window.STUDIO_LOCAL) || !window.crypto || !crypto.subtle) {
     $('glance').hidden = true;
