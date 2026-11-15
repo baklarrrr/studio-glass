@@ -82,7 +82,7 @@ def run():
                         if 'vendor/mqtt' in r.request.url:r.fulfill(status=200,body='')
                         elif r.request.url.startswith(base):r.continue_()
                         else:external.append(r.request.url);r.abort()
-                    page.route('**/*',route);page.goto(base+('' if local else '#t=native-test&k=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'));page.wait_for_function('data!==null && stateInfo().live');return page
+                    page.route('**/*',route);page.goto(base+'local.html'+('' if local else '#t=native-test&k=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'));page.wait_for_function('data!==null && stateInfo().live');return page
                 page=setup()
                 def idle():page.wait_for_function('!review.busy')
                 def kind(value):page.wait_for_function('(kind)=>navigation.route.kind===kind',arg=value)

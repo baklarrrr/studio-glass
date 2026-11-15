@@ -1,5 +1,12 @@
 # Render job inspection
 
+> **Bakar Studio is now inside Bakar Home (15 November 2026).** Bakar asked for one app. On the glasses this
+> address (`index.html`) only forwards to `../glass-home/` and hands on a pairing fragment (`#t=…&k=…` becomes
+> `#sg=topic~key&tab=review&view=renders`). Pictures, Feedback and render progress (Renders) are the Review section
+> of Bakar Home, whose `review/` directory holds this code. What follows describes that code. Here it is kept only as
+> `local.html` for the PC sidebar (`window.STUDIO_LOCAL`) and the offline tests; `sw.js` (cache v16) keeps the
+> forwarding page alone and removes older offline copies of the app. Check: `python tests/forward_test.py`.
+
 Tracks [issue #1](https://github.com/baklarrrr/studio-glass/issues/1). The first read-only inspection update was published on 2026-10-27 through [PR #2](https://github.com/baklarrrr/studio-glass/pull/2), runtime source `c4a264fb355fd8d7e65dc0938ebc758a50c3dbde`, offline shell v11. The PC relay was updated and the published app was checked over its real encrypted connection, including opening a real job and returning to the list. Physical glasses and Neural Band interaction remain unverified; the issue remains open.
 
 The prior interaction was rejected in the owner's [physical-controls follow-up](https://github.com/baklarrrr/studio-glass/issues/1#issuecomment-6435198965). This branch replaces it with the route model in [NAVIGATION.md](NAVIGATION.md). Select the headline to open attention jobs, Renders for all jobs, and a job for its explanation. These are actual browser-history routes. Native directions move spatial focus or scroll; Select activates semantic buttons; native Back traverses history. No global Arrow, Enter, Escape or Backspace navigation handler runs on glasses.
@@ -31,6 +38,7 @@ Gallery paging retains the relay's opaque request cursors as a history stack. Fi
 Requires Python with Playwright and a local Chrome installation. The navigation check starts and closes its own loopback server. Its broker is a synthetic stand-in, and external requests are blocked.
 
 ```
+python tests/forward_test.py
 python tests/navigation_overhaul_test.py
 python tests/feedback_renewal_test.py
 python tests/review_transport_test.py

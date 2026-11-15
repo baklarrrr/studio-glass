@@ -24,11 +24,13 @@ def run():
             browser = p.chromium.launch(channel='chrome')
             try:
                 page = browser.new_context(viewport={'width':600,'height':600}).new_page()
-                # Unpaired page cannot connect to a broker or register the worker itself.
+                # The forwarding page is held still here so the worker can be checked on this origin.
+                page.add_init_script('window.__holdForward=true;')
                 page.goto(base)
                 page.evaluate('''async()=>{
                   await (await caches.open('another-app-v7')).put('/other-app.html',new Response('keep'));
                   await (await caches.open('studio-glass-v1')).put('/old-shell.html',new Response('old'));
+                  await (await caches.open('studio-glass-v15-app-identity')).put('/app.js',new Response('old app'));
                   await navigator.serviceWorker.register('sw.js');
                   await navigator.serviceWorker.ready;
                 }''')
@@ -37,17 +39,17 @@ def run():
                     checks.append({'name':name,'passed':bool(ok)}); print(('PASS ' if ok else 'FAIL ')+name); assert ok,name
                 names = page.evaluate('caches.keys()')
                 check('activation preserves other apps on the same origin', 'another-app-v7' in names)
-                check('activation retires only older Studio Glass shells', 'studio-glass-v1' not in names and 'studio-glass-v15-app-identity' in names)
+                check('activation removes every older offline copy of the Studio app', 'studio-glass-v1' not in names and 'studio-glass-v15-app-identity' not in names and 'studio-glass-v16-forward-to-home' in names)
                 page.evaluate('''async()=>{
                   await fetch('/local/summary').catch(()=>{});
                   await fetch('/private-render.jpg').catch(()=>{});
                   await fetch('/review.js');
                 }''')
-                cached = page.evaluate('''async()=>{const c=await caches.open('studio-glass-v15-app-identity');return(await c.keys()).map(r=>new URL(r.url).pathname)}''')
+                cached = page.evaluate('''async()=>{const c=await caches.open('studio-glass-v16-forward-to-home');return(await c.keys()).map(r=>new URL(r.url).pathname)}''')
                 check('local API responses never enter shell cache', not any('/local/' in path for path in cached))
                 check('undeclared same-origin files are not cached', '/private-render.jpg' not in cached)
-                check('declared review code remains available offline', '/review.js' in cached)
-                check('route controller is in the offline shell', '/navigation.js' in cached)
+                check('the old app code is no longer kept offline', not any(path in cached for path in ('/review.js','/navigation.js','/app.js','/local.html')))
+                check('the forwarding page is available offline', '/index.html' in cached and '/' in cached)
                 check('launcher identity is available offline', '/manifest.webmanifest' in cached and '/icon-192.png' in cached)
                 kept = page.evaluate('''async()=>{const c=await caches.open('another-app-v7');return(await c.match('/other-app.html')).text()}''')
                 check('other app cached bytes remain unchanged', kept == 'keep')
@@ -56,6 +58,7 @@ def run():
                 local_page.add_init_script('window.STUDIO_LOCAL=true;')
                 local_page.route('**/local/summary', lambda r:r.fulfill(status=200,content_type='application/json',body=json.dumps({'t':'studio','at':1,'head':'Quiet','renders':{'items':[]}})))
                 local_page.goto(base)
+                local_page.wait_for_url('**/local.html')
                 local_page.wait_for_function('data!==null')
                 check('local sidebar mode registers no service worker', local_page.evaluate('async()=> (await navigator.serviceWorker.getRegistrations()).length') == 0)
                 check('local sidebar mode never opens MQTT brokers', local_page.evaluate('links.length===0 && key===null'))

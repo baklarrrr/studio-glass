@@ -28,7 +28,7 @@ def run():
                 page.on('pageerror', lambda e: errors.append(str(e)))
                 page.add_init_script('window.__sent=[];window.__testLink={connected:true,publish(t,b){__sent.push({t,b})},end(){}};')
                 page.route('**/*', lambda r: r.fulfill(status=200, body='') if 'vendor/mqtt' in r.request.url else r.continue_() if r.request.url.startswith(base) else r.abort())
-                page.goto(base + '#t=synthetic&k=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA')
+                page.goto(base + 'local.html#t=synthetic&k=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA')
                 page.wait_for_function('key!==null && helloAt>0')
                 def check(name, ok):
                     checks.append({'name':name,'passed':bool(ok)}); print(('PASS ' if ok else 'FAIL ')+name); assert ok, name

@@ -47,7 +47,7 @@ def run():
                         request.abort()
 
                 page.route('**/*', route)
-                page.goto(base + 'index.html#t=synthetic&k=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA')
+                page.goto(base + 'local.html#t=synthetic&k=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA')
                 page.wait_for_function('key !== null && helloAt > 0')
 
                 def check(name, ok):

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "name": "Bakar Studio",
-  "description": "Check render progress, review pictures and send feedback to your studio PC.",
+  "description": "Bakar Studio is now inside Bakar Home. This address opens Bakar Home.",
   "appearance": {
     "theme_color": "#8BDBB6",
     "icon_background": {

@@ -18,7 +18,7 @@ from playwright.sync_api import sync_playwright
 
 KEY = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
 BASE = os.environ.get("STUDIO_TEST_BASE", "http://127.0.0.1:47612/").rstrip("/") + "/"
-URL = f"{BASE}index.html?test=1#t=sgstudiotest&k={KEY}"
+URL = f"{BASE}local.html?test=1#t=sgstudiotest&k={KEY}"
 FRAMES = Path(sys.argv[1]) if len(sys.argv) > 1 else None
 
 failures = []

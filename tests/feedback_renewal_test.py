@@ -43,7 +43,7 @@ def run():
                         if 'vendor/mqtt' in r.request.url:r.fulfill(status=200,body='')
                         elif r.request.url.startswith(base):r.continue_()
                         else:outside.append(r.request.url);r.abort()
-                    page.route('**/*',route);page.goto(base+'#t=native-test&k=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');page.wait_for_function('data!==null');page.click('#picturesTab');page.wait_for_function('!review.busy');page.locator('#pictureList button').first.click();page.wait_for_function('!review.busy')
+                    page.route('**/*',route);page.goto(base+('' if os.environ.get('STUDIO_RENEWAL_BASELINE') else 'local.html')+'#t=native-test&k=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');page.wait_for_function('data!==null');page.click('#picturesTab');page.wait_for_function('!review.busy');page.locator('#pictureList button').first.click();page.wait_for_function('!review.busy')
                     check(f'{status}: loaded persisted original receipt/draft without clearing it',page.evaluate('review.draft.assetVersion')=='test-v001' and page.evaluate('review.draft.text')==draft['text'])
                     if os.environ.get('STUDIO_RENEWAL_BASELINE'):
                         page.screenshot(path=str(EVIDENCE/'before-original-terminal-600.png'))

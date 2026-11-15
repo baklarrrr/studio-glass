@@ -1,7 +1,7 @@
 {
   "name": "Bakar Studio",
   "short_name": "Bakar Studio",
-  "description": "Check render progress, review pictures and send feedback to your studio PC.",
+  "description": "Bakar Studio is now inside Bakar Home. This address opens Bakar Home.",
   "scope": "./",
   "display": "standalone",
   "background_color": "#000000",
