@@ -106,7 +106,7 @@ def run():
                     elif r.request.url.startswith(base): r.continue_()
                     else: outside.append(r.request.url); r.abort()
                 page.route('**/*', route)
-                page.goto(base); page.wait_for_function('data !== null && stateInfo().live')
+                page.goto(base + 'local.html'); page.wait_for_function('data !== null && stateInfo().live')
                 def check(name, ok):
                     print(('PASS ' if ok else 'FAIL ') + name)
                     checks.append({'name': name, 'passed': bool(ok)}); assert ok, name

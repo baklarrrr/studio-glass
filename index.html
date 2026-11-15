@@ -4,121 +4,53 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="application-name" content="Bakar Studio">
-  <meta name="description" content="Check render progress, review pictures and send feedback to your studio PC.">
+  <meta name="description" content="Bakar Studio is now inside Bakar Home. This address opens Bakar Home.">
   <meta name="mrbd-web-app-capable" content="yes">
   <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
   <meta name="theme-color" content="#000000">
-  <title>Bakar Studio</title>
+  <title>Bakar Home</title>
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <meta property="og:title" content="Bakar Studio">
-  <meta property="og:description" content="Check render progress, review pictures and send feedback to your studio PC.">
-  <meta property="og:image" content="https://baklarrrr.github.io/studio-glass/icon-512.png">
-  <meta property="og:image:width" content="512">
-  <meta property="og:image:height" content="512">
-  <meta property="og:image:alt" content="A mint progress ring around a white dot.">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
-  <link rel="stylesheet" href="style.css">
+  <style>
+    html, body { margin:0; height:100%; background:#000; color:#f3f6f4; font:24px/1.35 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    main { box-sizing:border-box; min-height:100%; max-width:600px; margin:0 auto; padding:32px; display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:24px; }
+    p { margin:0; font-size:26px; font-weight:650; white-space:nowrap; }
+    a { display:inline-block; min-height:56px; box-sizing:border-box; padding:12px 24px; border:2px solid #56655d; border-radius:14px; color:#8bdbb6; font-size:26px; font-weight:650; text-decoration:none; }
+    a:focus { outline:3px solid #8bdbb6; outline-offset:3px; }
+  </style>
 </head>
 <body>
   <main>
-    <section id="glance" class="screen" aria-labelledby="title">
-      <header class="topline">
-        <span class="brand" id="title">Bakar Studio</span>
-        <span class="right">
-          <span id="state" class="state" hidden><span id="dot" class="dot" aria-hidden="true"></span><span id="stateText">Asking your PC…</span></span>
-          <span id="gbat" class="gbat" hidden aria-label="Glasses battery">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="7" width="17" height="10" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="20.2" y="10" width="1.8" height="4" rx=".6"/><rect class="gbat-fill" x="4.3" y="8.8" width="13.4" height="6.4" rx="1"/><path class="gbat-bolt" d="M12.6 7.4 8.4 12.6h2.9l-1 4 4.3-5.4h-2.9z" fill="#000" stroke="#000" stroke-width="1.6" stroke-linejoin="round"/><path class="gbat-bolt" d="M12.6 7.4 8.4 12.6h2.9l-1 4 4.3-5.4h-2.9z"/></svg><span class="gbat-text"></span>
-          </span>
-        </span>
-      </header>
-
-      <nav id="rootNavigation" class="root-navigation" aria-label="Studio views"><button id="studioTab" type="button" data-peer="studio" aria-current="page">Studio</button><button id="picturesTab" type="button" data-peer="pictures">Pictures</button><button id="feedbackTab" type="button" data-peer="feedback">Feedback</button></nav>
-      <button id="desktopBack" class="desktop-back" type="button" hidden>Back</button>
-      <button id="headCard" class="head dashboard" type="button" disabled aria-disabled="true" aria-label="Open render jobs">
-        <span id="headline" class="headline quiet">Asking your PC…</span>
-        <span id="subline" class="subline"></span>
-      </button>
-
-      <button id="rendersBlock" class="block renders dashboard" type="button" aria-label="Open all render jobs" hidden>
-        <p id="rendersLabel" class="label">Renders <span class="open-hint">Open jobs ›</span></p>
-        <ol id="renderList" class="items"></ol>
-      </button>
-      <button id="picturesButton" class="pictures-entry dashboard" type="button" hidden>Pictures <span>View renders and give feedback ›</span></button>
-
-      <div id="pairRow" class="pair dashboard" hidden>
-        <div class="block" aria-labelledby="aiLabel">
-          <p id="aiLabel" class="label">AI at work</p>
-          <p id="aiText" class="value"></p>
-          <p id="aiNote" class="note"></p>
-        </div>
-        <div class="block" aria-labelledby="costLabel">
-          <p id="costLabel" class="label">AI use today</p>
-          <p id="costText" class="value"></p>
-          <p id="costNote" class="note"></p>
-        </div>
-      </div>
-
-      <div id="glassesBlock" class="block line dashboard" aria-labelledby="glassesLabel" hidden>
-        <p id="glassesLabel" class="label">Glasses</p>
-        <p class="line-text"><span id="glassesText" class="value"></span><span id="glassesNote" class="note"></span></p>
-      </div>
-
-      <section id="jobScreen" class="job-screen" aria-labelledby="jobHeading" hidden>
-        <div class="job-heading-row">
-          <h1 id="jobHeading">Render jobs</h1>
-          <div class="job-actions">
-
-            <button id="refreshButton" type="button">Refresh</button>
-          </div>
-        </div>
-        <p id="jobContext" class="job-context"></p>
-        <div id="jobBody" class="job-body native-scroll" tabindex="0">
-          <ol id="jobList" class="job-list"></ol>
-          <p id="jobEmpty" class="job-empty" hidden></p>
-          <div id="detailText" class="detail-text" hidden></div>
-        </div>
-        <button id="jobPicturesButton" class="pictures-link" type="button">Browse render pictures</button>
-      </section>
-      <section id="reviewScreen" class="review-screen" aria-labelledby="reviewHeading" hidden>
-        <header class="review-heading"><h1 id="reviewHeading">Pictures</h1><div class="review-top-actions"><button id="reviewRefresh" type="button">Refresh</button></div></header>
-        <p id="reviewMessage" class="review-message" role="status" hidden></p>
-        <p id="reviewIdentity" class="review-identity" hidden></p>
-        <div id="reviewContent" class="review-content native-scroll" tabindex="0" aria-label="View content">
-          <ol id="pictureList" class="picture-list" hidden></ol><ol id="feedbackList" class="picture-list" hidden></ol>
-          <button id="pictureFrame" type="button" class="picture-frame" tabindex="-1" aria-label="Render picture at fit." hidden><img id="renderPicture" alt=""></button>
-          <section id="feedbackForm" class="feedback-form" hidden>
-            <label for="feedbackText">What should change?</label><textarea id="feedbackText" maxlength="2000" placeholder="Select this field to write or dictate feedback." spellcheck="true"></textarea>
-            <div class="feedback-edit-meta"><p id="feedbackCount" class="review-small"></p><button id="finishEditing" class="desktop-only" type="button">Finish editing</button></div>
-            <div class="provider-row" role="group" aria-label="Who should work on this?"><span>Send to</span><button type="button" data-provider="auto" aria-pressed="true">Auto</button><button type="button" data-provider="codex" aria-pressed="false">Codex</button><button type="button" data-provider="claude" aria-pressed="false">Claude</button></div>
-            <p class="review-small">Feedback creates a Studio task. Progress is shown here.</p>
-          </section>
-          <div id="reviewText" class="review-text" hidden></div>
-        </div>
-        <p id="inboxCoverage" class="review-small" hidden></p>
-        <p id="inspectHint" class="review-small" hidden>Directions move the picture. Select or Back returns to fit.</p>
-        <p id="revisionHint" class="review-small" hidden>Starts a new revision. Earlier feedback stays in Feedback.</p>
-        <nav id="reviewPager" class="review-pager" aria-label="Picture or text pages"><button id="reviewPrevious" type="button">Previous</button><span id="reviewPosition" aria-live="polite"></span><button id="reviewNext" type="button">Next</button></nav>
-        <div id="reviewActions" class="review-actions">
-          <button id="zoomPicture" type="button" hidden>Inspect</button><button id="giveFeedback" type="button" hidden>Give feedback</button><button id="newFeedback" type="button" hidden>New feedback</button>
-          <button id="editFeedback" type="button" hidden>Edit feedback</button><button id="revisePicture" type="button" hidden>Revise this picture</button><button id="reviewFeedback" type="button" hidden>Review feedback</button><button id="sendFeedback" type="button" hidden>Send feedback</button>
-          <button id="retryFeedback" type="button" hidden>Retry same feedback</button><button id="checkReceipt" type="button" hidden>Check progress</button>
-          <button id="usePictureVersion" type="button" hidden>Use this picture version</button><button id="openReviewResult" type="button" hidden>Open result picture</button>
-        </div>
-      </section>
-    </section>
-
-    <section id="setup" class="screen center" hidden>
-      <svg class="hero" viewBox="0 0 64 64" aria-hidden="true"><use href="icon-mono.svg#glyph"/></svg>
-      <h1>Bakar Studio</h1>
-      <p class="subline">Not paired with your studio PC yet.</p>
-      <p class="note">Open the Bakar Studio link from your PC on the phone paired with your glasses.</p>
-    </section>
+    <p id="moved">Bakar Studio is now inside Bakar Home.</p>
+    <a id="go" href="../glass-home/#tab=review&amp;view=renders" role="button" autofocus>Open Bakar Home</a>
   </main>
-  <script src="vendor/mqtt.min.js"></script>
-  <script src="navigation.js"></script>
-  <script src="review.js"></script>
-  <script src="app.js"></script>
+  <script>
+    // The whole app moved into Bakar Home (Review: Pictures, Feedback, Renders). An old registration or a link from the
+    // PC still lands here, so this page passes it on. A pairing arrives only in the fragment (#t=…&k=…), which no server
+    // sees; it is handed to Bakar Home in its fragment and is never stored, logged or put in a query here.
+    (function () {
+      var go = document.getElementById('go');
+      var target = new URL('../glass-home/', location.href);
+      var from = new URLSearchParams(location.hash.slice(1));
+      var to = new URLSearchParams();
+      var t = from.get('t'), k = from.get('k');
+      if (t && k) to.set('sg', t + '~' + k);
+      from.forEach(function (value, name) { if (name !== 't' && name !== 'k' && !to.has(name)) to.set(name, value); });
+      if (!to.has('tab')) to.set('tab', 'review');
+      if (!to.has('view')) to.set('view', 'renders'); // Studio opened on render progress; so does this.
+      target.search = '';
+      target.hash = to.toString();
+      go.href = target.href;
+      go.addEventListener('keydown', function (event) { if (event.key === ' ') { event.preventDefault(); go.click(); } });
+      // The PC sidebar keeps its own page.
+      if (window.STUDIO_LOCAL) { location.replace('local.html' + location.hash); return; }
+      // Replaces the old offline copy of the app on these glasses.
+      try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {}); } catch (e) { /* optional */ }
+      if (!window.__holdForward) location.replace(target.href);
+      else go.focus();
+    })();
+  </script>
 </body>
 </html>

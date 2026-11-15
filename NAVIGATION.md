@@ -1,5 +1,12 @@
 # Navigation overhaul candidate
 
+> **Bakar Studio is now inside Bakar Home (15 November 2026).** Bakar asked for one app. On the glasses this
+> address (`index.html`) only forwards to `../glass-home/` and hands on a pairing fragment (`#t=…&k=…` becomes
+> `#sg=topic~key&tab=review&view=renders`). Pictures, Feedback and render progress (Renders) are the Review section
+> of Bakar Home, whose `review/` directory holds this code. What follows describes that code. Here it is kept only as
+> `local.html` for the PC sidebar (`window.STUDIO_LOCAL`) and the offline tests; `sw.js` (cache v16) keeps the
+> forwarding page alone and removes older offline copies of the app. Check: `python tests/forward_test.py`.
+
 Original record: [issue #1](https://github.com/baklarrrr/studio-glass/issues/1), [physical-controls follow-up](https://github.com/baklarrrr/studio-glass/issues/1#issuecomment-6435198965). The wearer rejected the previous navigation. This candidate remains unverified on glasses until the actual wearer journey passes.
 
 Implementation plan: preserve the current picture transport and exact-version draft/receipt contract; replace both navigation handlers with one browser-history controller; let semantic controls and native spatial focus handle glasses input. Studio, Pictures and Feedback share entry zero. Picture is entry one; feedback edit/review are phases of entry two; Send replaces two with receipt; result picture is three; Inspect is four. Jobs use the same controller. Peer selection, paging, progress and focus do not push history.

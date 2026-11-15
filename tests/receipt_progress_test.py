@@ -23,7 +23,7 @@ def run():
             try:
                 page=browser.new_context(viewport={'width':600,'height':600},service_workers='block').new_page()
                 page.add_init_script('window.STUDIO_LOCAL=true;')
-                page.goto(f'http://127.0.0.1:{server.server_port}/');page.wait_for_function('data!==null')
+                page.goto(f'http://127.0.0.1:{server.server_port}/local.html');page.wait_for_function('data!==null')
                 page.click('#picturesButton');page.wait_for_function('!review.busy')
                 page.locator('.picture-button').first.click();page.wait_for_function('!review.busy')
                 identity='00000000-0000-4000-a000-000000000001'
