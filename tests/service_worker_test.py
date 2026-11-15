@@ -26,11 +26,16 @@ def run():
                 page = browser.new_context(viewport={'width':600,'height':600}).new_page()
                 # The forwarding page is held still here so the worker can be checked on this origin.
                 page.add_init_script('window.__holdForward=true;')
-                page.goto(base)
+                # The older copies are put in place from a plain file on this origin, before the page (which registers
+                # the worker itself) is opened, so the worker's activation always meets them.
+                page.goto(base + 'icon.svg')
                 page.evaluate('''async()=>{
                   await (await caches.open('another-app-v7')).put('/other-app.html',new Response('keep'));
                   await (await caches.open('studio-glass-v1')).put('/old-shell.html',new Response('old'));
                   await (await caches.open('studio-glass-v15-app-identity')).put('/app.js',new Response('old app'));
+                }''')
+                page.goto(base)
+                page.evaluate('''async()=>{
                   await navigator.serviceWorker.register('sw.js');
                   await navigator.serviceWorker.ready;
                 }''')
@@ -58,7 +63,6 @@ def run():
                 local_page.add_init_script('window.STUDIO_LOCAL=true;')
                 local_page.route('**/local/summary', lambda r:r.fulfill(status=200,content_type='application/json',body=json.dumps({'t':'studio','at':1,'head':'Quiet','renders':{'items':[]}})))
                 local_page.goto(base)
-                local_page.wait_for_url('**/local.html')
                 local_page.wait_for_function('data!==null')
                 check('local sidebar mode registers no service worker', local_page.evaluate('async()=> (await navigator.serviceWorker.getRegistrations()).length') == 0)
                 check('local sidebar mode never opens MQTT brokers', local_page.evaluate('links.length===0 && key===null'))

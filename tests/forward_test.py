@@ -26,6 +26,28 @@ class Site(SimpleHTTPRequestHandler):
         super().do_GET()
 
 
+bridge_seen = []
+
+
+class Bridge(SimpleHTTPRequestHandler):
+    """Stands in for the PC sidebar bridge: `/` is index.html, local.html is refused, /local/summary answers."""
+    def __init__(self, *args, inject=True, **kwargs):
+        self.inject = inject; super().__init__(*args, **kwargs)
+    def log_message(self, *_args): pass
+    def do_GET(self):
+        bridge_seen.append(self.path); path = self.path.split('?')[0]
+        if path == '/local/summary':
+            body = json.dumps({'t': 'studio', 'at': 1, 'head': 'Quiet', 'renders': {'items': []}}).encode(); kind = 'application/json'
+        elif path in ('/', '/index.html'):
+            body = (ROOT / 'index.html').read_bytes(); kind = 'text/html'
+            if self.inject: body = body.replace(b'<script src="app.js">', b'<script>window.STUDIO_LOCAL=true;</script><script src="app.js">')
+        elif path == '/local.html' or path.startswith('/glass-home'):
+            self.send_error(404); return
+        else:
+            super().do_GET(); return
+        self.send_response(200); self.send_header('Content-Type', kind); self.send_header('Content-Length', str(len(body))); self.end_headers(); self.wfile.write(body)
+
+
 def run():
     server = ThreadingHTTPServer(('127.0.0.1', 0), lambda *a: Site(*a, directory=str(ROOT)))
     Thread(target=server.serve_forever, daemon=True).start()
@@ -66,8 +88,18 @@ def run():
                 check('no pairing reached the server', not any('synthetic-topic' in path or KEY in path for path in seen))
                 local = fresh('window.STUDIO_LOCAL=true;')
                 local.route('**/local/summary', lambda r: r.fulfill(status=200, content_type='application/json', body=json.dumps({'t': 'studio', 'at': 1, 'head': 'Quiet', 'renders': {'items': []}})))
-                local.goto(base); local.wait_for_url('**/local.html'); local.wait_for_function('data!==null')
-                check('the PC sidebar keeps its own page', local.is_visible('#headCard'))
+                local.goto(base); local.wait_for_function('data!==null')
+                check('the PC sidebar keeps its own page at the same address', local.is_visible('#headCard') and not local.is_visible('#moved') and local.evaluate('location.pathname') == '/studio-glass/')
+                # The sidebar bridge on the studio PC: the app at the top of 127.0.0.1, no local.html, and its own
+                # switch written in front of app.js. A second pass leaves the switch out: the address alone is enough.
+                for name, inject in (('with the bridge switch', True), ('with no switch at all', False)):
+                    bridge = ThreadingHTTPServer(('127.0.0.1', 0), lambda *a, inject=inject: Bridge(*a, inject=inject, directory=str(ROOT)))
+                    Thread(target=bridge.serve_forever, daemon=True).start()
+                    try:
+                        side = fresh(); side.goto(f'http://127.0.0.1:{bridge.server_port}/'); side.wait_for_function('data!==null')
+                        check(f'the sidebar bridge shows the Studio sidebar, {name}', side.is_visible('#headCard') and not side.is_visible('#moved') and side.inner_text('#headline') == 'Quiet' and side.evaluate('location.pathname') == '/')
+                        check(f'and never asks for a page the bridge does not serve, {name}', not any('local.html' in path or 'glass-home' in path for path in bridge_seen))
+                    finally: bridge.shutdown(); bridge.server_close()
             finally: browser.close()
     finally: server.shutdown(); server.server_close()
     evidence = Path(os.environ.get('STUDIO_UI_EVIDENCE', ROOT.parent / 'evidence-ui')); evidence.mkdir(parents=True, exist_ok=True)
